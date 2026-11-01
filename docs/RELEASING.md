@@ -6,7 +6,7 @@ The intended repository is `Chowdhury-Siam/Kizuna`. Publish the supplied source 
 
 GitHub Actions embeds `${{ github.repository }}` into both apps. Local builds default to `Chowdhury-Siam/Kizuna`; override with Android `-PreleaseRepository=owner/repo` or Windows `-p:ReleaseRepository=owner/repo`. Installed apps retain the update channel embedded when they were built.
 
-Keep `versionName` in `androidapp3/app/build.gradle.kts` and `<Version>` in `server/DroidOSS.App/DroidOSS.App.csproj` identical. Stable releases require `major.minor.patch`. Increase Android `versionCode` for every app update. Current version is **1.0.0**, code **7**. `python tools/release.py` validates and prints these values.
+Keep `versionName` in `androidapp3/app/build.gradle.kts` and `<Version>` in `server/DroidOSS.App/DroidOSS.App.csproj` identical. Stable releases require `major.minor.patch`. Increase Android `versionCode` for every app update. Current version is **1.0.1**, code **8**. `python tools/release.py` validates and prints these values.
 
 ## Android signing
 
@@ -101,3 +101,13 @@ cd androidapp3
 ```
 
 The shared fixtures in `tests/fixtures` exercise the Python publisher plus Kotlin and C# update validators. Tests use local fixture bytes; they do not publish a real release. See `docs/TEST_REPORT.md` for executed results and remaining physical-device checks.
+
+## CI caching and diagnostics
+
+The workflow caches added Android build SDK components, the emulator and API 35 system image, a clean AVD boot snapshot, Gradle dependencies/wrapper distributions/task outputs, and NuGet packages on Linux and Windows. Gradle tasks use `--build-cache`; Gradle's setup action manages its cache, with no overlapping manual Gradle cache. Standard-library-only Python jobs have no packages to cache. Java and .NET setup reuse the runner's tool cache when available.
+
+SDK caches are saved immediately after installation, and the clean AVD is saved **before** installing/running tests. A failing test therefore does not discard those prepared caches or store test-app data in the shared snapshot. Cache hits skip snapshot creation, load the saved boot state and do not overwrite it after tests. Snapshot keys include the runner image plus emulator/system-image versions; change their `v1` suffix when changing AVD settings. NuGet keys include project declarations and the OS/architecture. Pull requests restore caches but do not save these SDK/AVD/Gradle caches.
+
+Signing keys, passwords, private properties, release APKs/installers and Gradle configuration-cache state are not added to any explicit cache. A fresh runner still executes all tests and verifies every release artifact. The first run populates caches and may take longer; later speed depends on cache hits and runner/download availability. No speedup is guaranteed until measured on hosted CI. To recover from a bad cache, delete the affected Actions cache or bump its key suffix.
+
+Android emulator artifacts include HTML reports and XML results, even on test failure. The stable-release job still requires Android, emulator, protocol and Windows success, and a retained signing identity.
