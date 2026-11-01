@@ -1,4 +1,33 @@
-# Kizuna 1.0.1 — validation report
+# Kizuna 1.0.2 — validation report
+
+## D-pad comfort and inspector update (2026-11-01)
+
+Version **1.0.2**, Android code **9**. Source changes address the supplied phone screenshot:
+
+- D-pad arrow faces previously occupied only 62% of their nominal radius. New separated arrow faces extend to 96%, with square hit bounds that include their corners and diagonal gaps. Drawn faces and direction selection share geometry constants. Arrow faces select one cardinal direction; gaps can select diagonals. A radial neutral zone and optional 4-way mode replace independent X/Y thresholds.
+- Saved D-pad mode/deadzone use the existing layout store, JSON and QR paths. Old profiles default to 8-way. New layouts have a larger D-pad at a higher position; old saved coordinates/sizes are not rewritten. Placement fits the D-pad inside the viewport so an old bottom-edge layout does not lose its lower arrow.
+- Sliding beyond a 20% tolerance releases the D-pad instead of retaining a direction anywhere on screen. Direction feedback uses the same output-bit mapping, without spring interpolation or whole-pad press shrinking. Accessibility reports current directions and can switch a held direction directly.
+- Inspector visibility moves into the header; its redundant subtitle and fixed Duplicate footer are removed. Duplicate and Reset remain under Arrange. Sliders use a 4 dp neutral-colored track and 18 dp thumb, retaining at least 48 dp interaction height. Five palette choices retain 48 dp touch targets.
+
+Added **7 JVM regression cases** (5 input/persistence and 2 geometry cases) plus **2 Android interaction tests** for drag/diagonal/off-pad release and saved direction/deadzone options. These are included in the existing required CI tasks; none are disabled or marked optional.
+
+Validation actually executed for this source update:
+
+| Check | Result |
+| --- | --- |
+| Python signing/protocol/release suite | **23 passed**, zero failures/skips, 4.268 seconds |
+| Both workflow files, actionlint 1.7.7 | Passed |
+| Matching Android/Windows version validator | Passed: **1.0.2**, Android code **9** |
+| Whitespace diff check | No whitespace errors |
+| `testDebugUnitTest lintDebug assembleDebugAndroidTest` | Attempted; Gradle distribution download failed with `Network is unreachable` before compilation |
+| New Kotlin JVM tests and changed Android source | **Not compiled/executed locally**; fresh hosted build required |
+| Android emulator tests and actual rendered UI | **Not run/rendered locally**; no post-change screenshot is claimed |
+| Physical thumb comfort, controller/multiplayer gameplay, upgrade | **Not tested** for this version |
+| New APK or Windows installer | **Not built** for this version |
+
+Earlier executed totals below are historical. They do not establish that this version's new Kotlin/UI tests pass. Cached CI, signing helpers, protocol transport and immutable-release gates remain unchanged. No upstream push, hosted workflow dispatch, secret mutation or release publication was performed.
+
+---
 
 ## Android integration fixes and CI caching (2026-11-01)
 
