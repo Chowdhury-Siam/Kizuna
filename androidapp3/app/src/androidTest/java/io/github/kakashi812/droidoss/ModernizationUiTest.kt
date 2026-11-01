@@ -72,7 +72,7 @@ class ModernizationUiTest {
         compose.onNodeWithText("Right stick").performScrollTo().performClick()
         compose.onNodeWithText("Input").performClick()
         compose.onNodeWithText("Touchpad").performScrollTo().performClick()
-        compose.onNodeWithContentDescription("Touchpad sensitivity").performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(2f) }
+        compose.onNodeWithContentDescription("Touchpad sensitivity").performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(12f) }
         compose.onNodeWithContentDescription("Game deadzone compensation").performScrollTo()
             .performSemanticsAction(SemanticsActions.SetProgress) { it(.42f) }
         compose.onNodeWithContentDescription("Close inspector").performClick()
@@ -83,7 +83,7 @@ class ModernizationUiTest {
         compose.runOnIdle {
             val right = requireNotNull(saved).elements.filterIsInstance<StickElement>().single { it.stick == Stick.RIGHT }
             assertEquals(StickMode.TOUCHPAD, right.mode)
-            assertEquals(2f, right.touchpadSensitivity, 0.01f)
+            assertEquals(12f, right.touchpadSensitivity, 0.01f)
             assertEquals(.42f, right.touchpadDeadzoneCompensation, .001f)
         }
     }
@@ -139,6 +139,22 @@ class ModernizationUiTest {
             assertFalse(dpad.diagonals)
             assertEquals(.1f, dpad.deadzone, .001f)
         }
+    }
+
+    @Test fun touchpadPausesOutsideAndReentryDoesNotJump() {
+        val pad = StickElement("camera", .5f, .5f, .4f, stick = Stick.RIGHT, mode = StickMode.TOUCHPAD)
+        compose.setContent { KizunaTheme { NarrowPhone { PadScreen(null, defaultLayout().copy(elements = listOf(pad))) } } }
+        val target = compose.onNodeWithContentDescription("RIGHT touchpad")
+        target.performTouchInput {
+            down(center)
+            moveTo(Offset(width * .6f, height * .5f))
+            moveTo(Offset(width * 1.15f, height * .1f))
+        }
+        target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Stopped"))
+        target.performTouchInput { moveTo(Offset(width * .75f, height * .5f)) }
+        target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Stopped"))
+        target.performTouchInput { up() }
+        target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Stopped"))
     }
 
     private fun assertInsidePhone(node: SemanticsNodeInteraction) {
