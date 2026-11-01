@@ -19,7 +19,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <StartupObject>DroidOSS.App.Program</StartupObject>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
     <ReleaseRepository Condition="'$(ReleaseRepository)' == ''">Chowdhury-Siam/Kizuna</ReleaseRepository>
     <ApplicationIcon>Assets/kizuna.ico</ApplicationIcon>
     <Product>Kizuna</Product>
