@@ -1,0 +1,17 @@
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=Kizuna Release
+Signer #1 certificate SHA-256 digest: 4cc8567d019456d305690f89ced221a4829b2e4ea744cb955fba439e4426bc09
+Signer #1 certificate SHA-1 digest: 3e02d65d62e6914fcc0dd903fe54f8d2a916711d
+Signer #1 certificate MD5 digest: 5ad8dcef973447bebdb7a1965f5647d6
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 4096
+Signer #1 public key SHA-256 digest: 629da4f159fbf2db48c6fdf047a19fd0b1614026911f57971c1be29ce88fc729
+Signer #1 public key SHA-1 digest: 58d4d5838db7eeb25a75300846fda5671448adec
+Signer #1 public key MD5 digest: 30be341b4ed0406dba184f214b02bbcf
