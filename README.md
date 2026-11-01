@@ -130,6 +130,10 @@ Create or duplicate a custom profile, then choose **Edit**. The compact toolbar 
 
 Move controls in the preview; change size, opacity, color, visibility, mappings and layering in the inspector. Hidden controls remain in the control picker. Gesture changes form single undo steps, and saving writes the profile atomically. Cancel leaves the saved version intact.
 
+For the D-pad, choose **D-pad → Input** to select **4-way** or **8-way** and adjust the **Center deadzone**. The larger arrow faces snap to one direction; in 8-way mode, the gaps accept diagonals. You can slide between directions, return to the center, or slide off to release. Existing profiles keep their stored size and position; the pad is fitted inside the screen while playing. New layouts start with a larger D-pad. **Size** remains adjustable under Style.
+
+The inspector uses slim sliders with 48 dp touch targets. Visibility is in its header; **Duplicate control** and **Reset this control** are under Arrange.
+
 For a touchpad, choose either stick → **Input → Touchpad**. Set sensitivity from **0.25× to 4×**. Relative swipes drive that stick's XInput axes; landing does not jump to an absolute direction. Holding still, lifting or cancelling releases the output. This is a gamepad-camera/movement control, not a desktop mouse protocol.
 
 **Input & calibration** saves independent stick sensitivity, deadzones, response curves and center offsets, plus trigger mode/range and vibration strength. **Preview** works without a server. Accessibility actions support button holds and directional input.
