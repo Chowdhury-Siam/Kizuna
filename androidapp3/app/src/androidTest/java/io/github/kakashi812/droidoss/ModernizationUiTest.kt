@@ -73,6 +73,8 @@ class ModernizationUiTest {
         compose.onNodeWithText("Input").performClick()
         compose.onNodeWithText("Touchpad").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Touchpad sensitivity").performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(2f) }
+        compose.onNodeWithContentDescription("Game deadzone compensation").performScrollTo()
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(.42f) }
         compose.onNodeWithContentDescription("Close inspector").performClick()
         val save = compose.onNode(hasText("Save") and hasClickAction())
         assertInsidePhone(save)
@@ -82,6 +84,7 @@ class ModernizationUiTest {
             val right = requireNotNull(saved).elements.filterIsInstance<StickElement>().single { it.stick == Stick.RIGHT }
             assertEquals(StickMode.TOUCHPAD, right.mode)
             assertEquals(2f, right.touchpadSensitivity, 0.01f)
+            assertEquals(.42f, right.touchpadDeadzoneCompensation, .001f)
         }
     }
 
