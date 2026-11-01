@@ -94,8 +94,10 @@ fun steamPreset(name: String): ControllerLayout {
 }
 
 
+const val MAX_TOUCHPAD_SENSITIVITY = 16f
+
 fun StickElement.sanitized(): StickElement = copy(
-    touchpadSensitivity = touchpadSensitivity.safe(1f, 0.25f, 4f),
+    touchpadSensitivity = touchpadSensitivity.safe(1f, 0.25f, MAX_TOUCHPAD_SENSITIVITY),
     touchpadDeadzoneCompensation = touchpadDeadzoneCompensation.safe(0.28f, 0f, 0.6f),
 )
 
@@ -104,7 +106,7 @@ fun touchpadAxes(x: Float, y: Float, sensitivity: Float, deadzoneCompensation: F
     if (!x.isFinite() || !y.isFinite()) return 0.toShort() to 0.toShort()
     val length = hypot(x, y)
     if (length == 0f || !length.isFinite()) return 0.toShort() to 0.toShort()
-    val gain = sensitivity.safe(1f, 0.25f, 4f)
+    val gain = sensitivity.safe(1f, 0.25f, MAX_TOUCHPAD_SENSITIVITY)
     val floor = deadzoneCompensation.safe(0.28f, 0f, 0.6f)
     val speed = (length * gain).coerceAtMost(1f)
     val travel = floor + (1f - floor) * speed
@@ -112,21 +114,29 @@ fun touchpadAxes(x: Float, y: Float, sensitivity: Float, deadzoneCompensation: F
     return axis(x) to axis(-y)
 }
 
-/** Coordinates are normalized by control radius. A landing never jumps to an absolute position. */
+/** Relative coordinates stay within the visible rectangle; event time measures velocity, now measures idle. */
 class TouchpadMotion(private var x: Float, private var y: Float, private var time: Long) {
+    private var inside = withinBounds(x, y)
     private var movedAt = Long.MIN_VALUE
     private var velocityX = 0f
     private var velocityY = 0f
-    fun move(nextX: Float, nextY: Float, now: Long) {
-        if (!nextX.isFinite() || !nextY.isFinite() || now < time) return
+    private fun clear() { movedAt = Long.MIN_VALUE; velocityX = 0f; velocityY = 0f }
+    fun move(nextX: Float, nextY: Float, now: Long, eventTime: Long = now) {
+        if (!nextX.isFinite() || !nextY.isFinite() || eventTime < time) {
+            clear(); inside = false; return
+        }
+        val nextInside = withinBounds(nextX, nextY)
+        if (!nextInside || !inside) {
+            // Keep the pointer captured, but stop outside. Re-entry starts at this new position.
+            clear(); x = nextX; y = nextY; time = eventTime; inside = nextInside; return
+        }
         val dx = nextX - x
         val dy = nextY - y
-        // Accumulate sub-pixel jitter rather than turning it into the game's minimum camera speed.
         if (hypot(dx, dy) < MIN_MOVEMENT) return
-        // A normalized swipe velocity, not one frame's tiny displacement. Sensitivity scales this later.
-        val frame = 160_000_000f / (now - time).coerceIn(4_000_000, 100_000_000).toFloat()
+        // Pointer event timestamps avoid speed spikes when Android delivers events in a batch.
+        val frame = 160_000_000f / (eventTime - time).coerceIn(4_000_000, 100_000_000).toFloat()
         velocityX = dx * frame; velocityY = dy * frame; movedAt = now
-        x = nextX; y = nextY; time = now
+        x = nextX; y = nextY; time = eventTime
     }
     fun sample(id: String, now: Long): ControlTouch =
         if (movedAt == Long.MIN_VALUE || now - movedAt >= IDLE_NANOS || now < movedAt) ControlTouch(id)
@@ -134,5 +144,6 @@ class TouchpadMotion(private var x: Float, private var y: Float, private var tim
     companion object {
         const val IDLE_NANOS = 60_000_000L
         private const val MIN_MOVEMENT = 0.006f
+        private fun withinBounds(x: Float, y: Float) = x.isFinite() && y.isFinite() && abs(x) <= 1f && abs(y) <= 0.7f
     }
 }
