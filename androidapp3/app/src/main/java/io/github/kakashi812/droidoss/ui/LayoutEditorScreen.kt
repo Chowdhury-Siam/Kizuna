@@ -273,7 +273,7 @@ private fun Inspector(
                                 EditorSlider("Game deadzone compensation", selected.touchpadDeadzoneCompensation, 0f..0.6f,
                                     "${(selected.touchpadDeadzoneCompensation * 100).roundToInt()}%",
                                     { value -> slider { (it as StickElement).copy(touchpadDeadzoneCompensation = value) } }, finished)
-                                Text((if (selected.stick == Stick.RIGHT) "Swipe to look around. " else "Swipe to move. ") + "Raise sensitivity for faster swipes. Leaving the pad pauses input; lift to reposition.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text((if (selected.stick == Stick.RIGHT) "Swipe to look around. " else "Swipe to move. ") + "Swipe to an edge and hold to keep turning. Swipe inward to adjust; lift to stop. Raise sensitivity for faster response.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             } else Text("A fixed joystick with your profile's deadzone and response curve.", style = MaterialTheme.typography.bodySmall)
                             Text("Output stick", style = MaterialTheme.typography.labelLarge)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
