@@ -1,4 +1,29 @@
-# Kizuna 1.0.4 — validation report
+# Kizuna 1.0.5 — validation report
+
+## Touchpad edge handling and extended sensitivity (2026-11-01)
+
+Version **1.0.5**, Android code **12**. The user confirmed the preceding version rotates the camera, but reported unpredictable movement around the pad edges and insufficient gain at 4×. The supplied recording shows strong RX/RY values reaching the PC while the finger can travel beyond the pad. Source inspection confirms the contact indicator was clamped to the visible rectangle while relative motion continued from unbounded pointer positions.
+
+The correction pauses output when a captured pointer leaves the normalized rectangle (X ±1, Y ±0.7). Pointer ownership stays with the pad until release, so the same swipe cannot activate an adjacent button. Returning inside rebases position/time with neutral output; subsequent inside movement resumes normally. Invalid or reordered input stops the motion until a new valid anchor is established. Input velocity now uses the pointer event's timestamp rather than callback delivery time; idle timing still uses the receiver's monotonic clock. Keeping those clocks separate avoids burst-speed spikes without breaking idle/release behavior. Accessibility now reports Moving/Stopped for touchpads.
+
+Touchpad sensitivity is expanded to **0.25×–16×**, using one shared maximum for the editor, profile settings, output mapping and import/store sanitization. Existing 4× or lower values are preserved. JSON/QR/store regression values now include 12.5× and the editor test saves 12×. This increases the available gain below saturation; **full XInput travel still caps at ±32767**. A game controls its maximum turn rate, so higher app gain cannot make an already saturated stick turn faster. Adjust in-game controller-camera sensitivity if the game provides it.
+
+Five JVM regression cases were added for all four edges/corners, relative movement just inside the top-right corner, delayed/batched delivery, reordered/invalid samples, and gain above 4× with bounded neutral/full-range output. One Android interaction case exercises outside/re-entry/release, and the existing editor test now covers a value above the old limit. These new tests are required by the unchanged CI tasks but **have not been executed locally**.
+
+| Validation actually executed for this update | Result |
+| --- | --- |
+| Local Python signing/protocol/release suite | **23 passed**, zero failures/skips, 4.386 seconds |
+| Both workflow files, actionlint 1.7.7 | Passed |
+| Matching Android/Windows version validator | Passed: **1.0.5**, Android code **12** |
+| Whitespace diff check | No whitespace errors |
+| Gradle JVM tests/lint/release/test-APK build | Attempted; Gradle distribution download failed with `Network is unreachable` before compilation |
+| New/changed Kotlin tests, Android build and emulator cases | **Not compiled/run locally**; fresh hosted CI required |
+| Actual Tomb Raider edge feel, high gain and four-phone gameplay | **Not tested** on this source version |
+| New APK/Windows installer | **Not built** for this version |
+
+Signing helpers/identity, required CI gates, cached SDK/dependencies, transport/protocol, four-player and Steam paths remain unchanged. No GitHub push, secret mutation, hosted workflow dispatch or release publication was performed. Earlier results below are historical and do not establish that 1.0.5 passes its Android checks.
+
+---
 
 ## Uploaded CI log analysis and slider correction (2026-11-01)
 
