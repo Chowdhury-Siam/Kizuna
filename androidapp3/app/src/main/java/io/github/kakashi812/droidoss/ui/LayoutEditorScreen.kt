@@ -268,12 +268,12 @@ private fun Inspector(
                         is StickElement -> {
                             StickModeSelector(selected, onChange = { value -> change { value } })
                             if (selected.mode == StickMode.TOUCHPAD) {
-                                EditorSlider("Touchpad sensitivity", selected.touchpadSensitivity, 0.25f..4f, "%.2f×".format(selected.touchpadSensitivity),
+                                EditorSlider("Touchpad sensitivity", selected.touchpadSensitivity, 0.25f..MAX_TOUCHPAD_SENSITIVITY, "%.2f×".format(selected.touchpadSensitivity),
                                     { value -> slider { (it as StickElement).copy(touchpadSensitivity = value) } }, finished)
                                 EditorSlider("Game deadzone compensation", selected.touchpadDeadzoneCompensation, 0f..0.6f,
                                     "${(selected.touchpadDeadzoneCompensation * 100).roundToInt()}%",
                                     { value -> slider { (it as StickElement).copy(touchpadDeadzoneCompensation = value) } }, finished)
-                                Text((if (selected.stick == Stick.RIGHT) "Swipe to look around. " else "Swipe to move. ") + "Raise compensation if slow swipes do nothing. Lift or hold still to stop.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text((if (selected.stick == Stick.RIGHT) "Swipe to look around. " else "Swipe to move. ") + "Raise sensitivity for faster swipes. Leaving the pad pauses input; lift to reposition.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             } else Text("A fixed joystick with your profile's deadzone and response curve.", style = MaterialTheme.typography.bodySmall)
                             Text("Output stick", style = MaterialTheme.typography.labelLarge)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
