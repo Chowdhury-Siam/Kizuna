@@ -55,6 +55,12 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-net10-${{ hashFiles('server/**/*.csproj', '**/packages.lock.json', 'global.json', '**/NuGet.Config') }}
+          restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-net10-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -84,8 +90,26 @@ jobs:
           # The legacy tools package was removed from the SDK repository.
           packages: platform-tools
           log-accepted-android-sdk-licenses: 'false'
+      - name: Restore Android build SDK
+        id: sdk-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/platforms/android-37*
+            ${{ env.ANDROID_HOME }}/build-tools/36.0.0
+          key: android-sdk-${{ runner.os }}-${{ runner.arch }}-api37-bt36-v1
       - run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
+      - name: Save Android build SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true' && github.event_name != 'pull_request'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/platforms/android-37*
+            ${{ env.ANDROID_HOME }}/build-tools/36.0.0
+          key: ${{ steps.sdk-cache.outputs.cache-primary-key }}
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
       - name: Configure automatic APK signing
         id: signing
         env:
@@ -104,7 +128,7 @@ jobs:
         run: |
           options=("-PreleaseRepository=$RELEASE_REPOSITORY")
           if [ "$SIGNED" != true ]; then options+=("-PconnectionPreview=true"); fi
-          ./gradlew --no-daemon testDebugUnitTest lintDebug assembleRelease "${options[@]}"
+          ./gradlew --no-daemon --build-cache testDebugUnitTest lintDebug assembleRelease "${options[@]}"
       - name: Stage versioned APK and verify signing
         env:
           VERSION: ${{ needs.version.outputs.version }}
@@ -163,25 +187,105 @@ jobs:
           # The legacy tools package was removed from the SDK repository.
           packages: platform-tools
           log-accepted-android-sdk-licenses: 'false'
+      - name: Restore Android build SDK
+        id: sdk-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/platforms/android-37*
+            ${{ env.ANDROID_HOME }}/build-tools/36.0.0
+          key: android-sdk-${{ runner.os }}-${{ runner.arch }}-api37-bt36-v1
       - run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
+      - name: Save Android build SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true' && github.event_name != 'pull_request'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/platforms/android-37*
+            ${{ env.ANDROID_HOME }}/build-tools/36.0.0
+          key: ${{ steps.sdk-cache.outputs.cache-primary-key }}
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - uses: reactivecircus/android-emulator-runner@v2
+      - name: Restore emulator SDK
+        id: emulator-sdk-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/emulator
+            ${{ env.ANDROID_HOME }}/platforms/android-35
+            ${{ env.ANDROID_HOME }}/build-tools/37.0.0
+            ${{ env.ANDROID_HOME }}/system-images/android-35/default/x86_64
+          key: emulator-sdk-${{ runner.os }}-${{ runner.arch }}-${{ env.ImageVersion }}-api35-default-x64-v1
+      - name: Install emulator SDK and fingerprint snapshot inputs
+        id: emulator-version
+        shell: bash
+        run: |
+          sdkmanager emulator "system-images;android-35;default;x86_64" "platforms;android-35" "build-tools;37.0.0"
+          fingerprint=$(sha256sum "$ANDROID_HOME/emulator/source.properties" "$ANDROID_HOME/system-images/android-35/default/x86_64/source.properties" | sha256sum | cut -d ' ' -f 1)
+          echo "fingerprint=$fingerprint" >> "$GITHUB_OUTPUT"
+      - name: Save emulator SDK
+        if: steps.emulator-sdk-cache.outputs.cache-hit != 'true' && github.event_name != 'pull_request'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/emulator
+            ${{ env.ANDROID_HOME }}/platforms/android-35
+            ${{ env.ANDROID_HOME }}/build-tools/37.0.0
+            ${{ env.ANDROID_HOME }}/system-images/android-35/default/x86_64
+          key: ${{ steps.emulator-sdk-cache.outputs.cache-primary-key }}
+      - name: Restore clean emulator snapshot
+        id: avd-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.android/avd/kizuna-ci.avd
+            ~/.android/avd/kizuna-ci.ini
+          key: avd-${{ runner.os }}-${{ runner.arch }}-${{ env.ImageVersion }}-${{ steps.emulator-version.outputs.fingerprint }}-api35-default-x64-v1
+      - name: Create clean emulator snapshot on cache miss
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
+          target: default
           arch: x86_64
+          avd-name: kizuna-ci
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Clean emulator snapshot prepared"
+      - name: Save clean emulator before installing the test app
+        if: steps.avd-cache.outputs.cache-hit != 'true' && github.event_name != 'pull_request'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.android/avd/kizuna-ci.avd
+            ~/.android/avd/kizuna-ci.ini
+          key: ${{ steps.avd-cache.outputs.cache-primary-key }}
+      - name: Run all Android integration tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          avd-name: kizuna-ci
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           working-directory: androidapp3
-          script: ./gradlew --no-daemon connectedDebugAndroidTest
+          script: ./gradlew --no-daemon --build-cache connectedDebugAndroidTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-ui-results-${{ github.run_id }}-${{ github.run_attempt }}
-          path: androidapp3/app/build/reports/androidTests
+          path: |
+            androidapp3/app/build/reports/androidTests
+            androidapp3/app/build/outputs/androidTest-results
   windows:
     runs-on: windows-latest
     needs: version
@@ -190,6 +294,12 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-net10-${{ hashFiles('server/**/*.csproj', '**/packages.lock.json', 'global.json', '**/NuGet.Config') }}
+          restore-keys: nuget-${{ runner.os }}-${{ runner.arch }}-net10-
       - run: dotnet test server/DroidOSS.sln -c Release --logger trx --results-directory test-results
       - name: Publish Windows x64
         env:
