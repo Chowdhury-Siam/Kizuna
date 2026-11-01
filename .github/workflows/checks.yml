@@ -90,6 +90,18 @@ jobs:
           # The legacy tools package was removed from the SDK repository.
           packages: platform-tools
           log-accepted-android-sdk-licenses: 'false'
+      - name: Prepare SDK cache permissions
+        shell: bash
+        run: |
+          sdk_owner="$(id -u):$(id -g)"
+          # Hosted images contain root-owned packages; tar must be able to restore modes/timestamps.
+          for directory in "$ANDROID_HOME" "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools" "$ANDROID_HOME/system-images" "$ANDROID_HOME/system-images/android-35" "$ANDROID_HOME/system-images/android-35/default"; do
+            sudo mkdir -p "$directory"
+            sudo chown "$sdk_owner" "$directory"
+          done
+          for package in "$ANDROID_HOME"/platforms/android-37* "$ANDROID_HOME/build-tools/36.0.0" "$ANDROID_HOME/platforms/android-35" "$ANDROID_HOME/build-tools/37.0.0" "$ANDROID_HOME/emulator" "$ANDROID_HOME/system-images/android-35/default/x86_64"; do
+            if [ -d "$package" ]; then sudo chown -R "$sdk_owner" "$package"; fi
+          done
       - name: Restore Android build SDK
         id: sdk-cache
         uses: actions/cache/restore@v4
@@ -97,7 +109,7 @@ jobs:
           path: |
             ${{ env.ANDROID_HOME }}/platforms/android-37*
             ${{ env.ANDROID_HOME }}/build-tools/36.0.0
-          key: android-sdk-${{ runner.os }}-${{ runner.arch }}-api37-bt36-v1
+          key: android-sdk-${{ runner.os }}-${{ runner.arch }}-api37-bt36-v2
       - run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
       - name: Save Android build SDK
         if: steps.sdk-cache.outputs.cache-hit != 'true' && github.event_name != 'pull_request'
@@ -187,6 +199,18 @@ jobs:
           # The legacy tools package was removed from the SDK repository.
           packages: platform-tools
           log-accepted-android-sdk-licenses: 'false'
+      - name: Prepare SDK cache permissions
+        shell: bash
+        run: |
+          sdk_owner="$(id -u):$(id -g)"
+          # Hosted images contain root-owned packages; tar must be able to restore modes/timestamps.
+          for directory in "$ANDROID_HOME" "$ANDROID_HOME/platforms" "$ANDROID_HOME/build-tools" "$ANDROID_HOME/system-images" "$ANDROID_HOME/system-images/android-35" "$ANDROID_HOME/system-images/android-35/default"; do
+            sudo mkdir -p "$directory"
+            sudo chown "$sdk_owner" "$directory"
+          done
+          for package in "$ANDROID_HOME"/platforms/android-37* "$ANDROID_HOME/build-tools/36.0.0" "$ANDROID_HOME/platforms/android-35" "$ANDROID_HOME/build-tools/37.0.0" "$ANDROID_HOME/emulator" "$ANDROID_HOME/system-images/android-35/default/x86_64"; do
+            if [ -d "$package" ]; then sudo chown -R "$sdk_owner" "$package"; fi
+          done
       - name: Restore Android build SDK
         id: sdk-cache
         uses: actions/cache/restore@v4
@@ -194,7 +218,7 @@ jobs:
           path: |
             ${{ env.ANDROID_HOME }}/platforms/android-37*
             ${{ env.ANDROID_HOME }}/build-tools/36.0.0
-          key: android-sdk-${{ runner.os }}-${{ runner.arch }}-api37-bt36-v1
+          key: android-sdk-${{ runner.os }}-${{ runner.arch }}-api37-bt36-v2
       - run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
       - name: Save Android build SDK
         if: steps.sdk-cache.outputs.cache-hit != 'true' && github.event_name != 'pull_request'
@@ -221,7 +245,7 @@ jobs:
             ${{ env.ANDROID_HOME }}/platforms/android-35
             ${{ env.ANDROID_HOME }}/build-tools/37.0.0
             ${{ env.ANDROID_HOME }}/system-images/android-35/default/x86_64
-          key: emulator-sdk-${{ runner.os }}-${{ runner.arch }}-${{ env.ImageVersion }}-api35-default-x64-v1
+          key: emulator-sdk-${{ runner.os }}-${{ runner.arch }}-${{ env.ImageVersion }}-api35-default-x64-v2
       - name: Install emulator SDK and fingerprint snapshot inputs
         id: emulator-version
         shell: bash
