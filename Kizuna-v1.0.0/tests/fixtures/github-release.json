@@ -1,0 +1,19 @@
+{
+  "tag_name": "v1.1.0",
+  "draft": false,
+  "prerelease": false,
+  "assets": [
+    {
+      "name": "update.json",
+      "browser_download_url": "https://github.com/Chowdhury-Siam/Kizuna/releases/download/v1.1.0/update.json"
+    },
+    {
+      "name": "Kizuna-v1.1.0-android.apk",
+      "browser_download_url": "https://github.com/Chowdhury-Siam/Kizuna/releases/download/v1.1.0/Kizuna-v1.1.0-android.apk"
+    },
+    {
+      "name": "Kizuna-v1.1.0-Setup.exe",
+      "browser_download_url": "https://github.com/Chowdhury-Siam/Kizuna/releases/download/v1.1.0/Kizuna-v1.1.0-Setup.exe"
+    }
+  ]
+}
