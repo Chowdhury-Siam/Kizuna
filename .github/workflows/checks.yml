@@ -73,6 +73,8 @@ jobs:
       signed: ${{ steps.signing.outputs.signed }}
     steps:
       - uses: actions/checkout@v4
+      - name: Make Gradle wrapper executable
+        run: chmod +x androidapp3/gradlew
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -150,6 +152,8 @@ jobs:
     needs: android
     steps:
       - uses: actions/checkout@v4
+      - name: Make Gradle wrapper executable
+        run: chmod +x androidapp3/gradlew
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
