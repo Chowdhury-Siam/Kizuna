@@ -54,7 +54,7 @@ class TouchpadTest {
         motion.move(.001f, 0f, 8_000_000)
         motion.move(-.001f, .001f, 16_000_000)
         assertEquals(ControlTouch("right"), motion.sample("right", 16_000_000))
-        motion.move(.004f, 0f, 24_000_000)
+        motion.move(.0015f, 0f, 24_000_000)
         assertEquals(ControlTouch("right"), motion.sample("right", 24_000_000))
         motion.move(.008f, 0f, 32_000_000)
         assertTrue(motion.sample("right", 32_000_000).x > 0f)
@@ -68,34 +68,77 @@ class TouchpadTest {
         assertTrue(x > 0); assertEquals(x, y)
         assertEquals(0.toShort() to 0.toShort(), touchpadAxes(Float.NaN, 1f, 1f, .4f))
     }
-    @Test fun everyEdgePausesAndReentryRebasesInsteadOfJumping() {
-        val outside = listOf(1.1f to 0f, -1.1f to 0f, 0f to .8f, 0f to -.8f, 1.1f to -.8f)
-        for ((x, y) in outside) {
+    @Test fun everyEdgeAndCornerContinuesWhileHeldAndInwardSwipesRespond() {
+        val edges = listOf(1.1f to 0f, -1.1f to 0f, 0f to .8f, 0f to -.8f,
+            1.1f to -.8f, -1.1f to -.8f, 1.1f to .8f, -1.1f to .8f)
+        for ((x, y) in edges) {
             val motion = TouchpadMotion(0f, 0f, 0)
-            motion.move(.1f, 0f, 16_000_000)
-            assertTrue(motion.sample("pad", 16_000_000).x > 0f)
-            motion.move(x, y, 32_000_000)
-            assertEquals(ControlTouch("pad"), motion.sample("pad", 32_000_000))
-            motion.move(x * 1.1f, y * 1.1f, 48_000_000)
-            assertEquals(ControlTouch("pad"), motion.sample("pad", 48_000_000))
-            motion.move(.5f, -.2f, 64_000_000)
-            assertEquals(ControlTouch("pad"), motion.sample("pad", 64_000_000))
-            motion.move(.52f, -.2f, 80_000_000)
-            val resumed = motion.sample("pad", 80_000_000)
-            assertTrue(resumed.x > 0f)
-            assertEquals(0f, resumed.y, 0f)
+            motion.move(x, y, 16_000_000)
+            val edge = motion.sample("pad", 16_000_000)
+            assertEquals(1f, kotlin.math.hypot(edge.x, edge.y), .0001f)
+            assertTrue(edge.x * x + edge.y * y > 0f)
+            // No new pointer events are needed for continued camera movement at the edge.
+            assertEquals(edge, motion.sample("pad", 2_000_000_000))
+            motion.move(x * 1.2f, y * 1.2f, 2_016_000_000)
+            val outside = motion.sample("pad", 3_000_000_000)
+            assertEquals(edge.x, outside.x, .0001f)
+            assertEquals(edge.y, outside.y, .0001f)
+            motion.move(x * .4f, y * .4f, 3_016_000_000)
+            val inward = motion.sample("pad", 3_016_000_000)
+            assertTrue("An inward swipe must respond without lifting", inward.x * x + inward.y * y < 0f)
+            assertEquals(ControlTouch("pad"), motion.sample("pad", 3_076_000_000))
         }
     }
-    @Test fun motionNearTheTopRightCornerStaysRelative() {
-        val motion = TouchpadMotion(.90f, -.65f, 0)
-        motion.move(.92f, -.64f, 16_000_000)
-        val corner = motion.sample("pad", 16_000_000)
-        assertEquals(.2f, corner.x, .0001f)
-        assertEquals(.1f, corner.y, .0001f)
-        motion.move(.94f, -.63f, 32_000_000)
-        val next = motion.sample("pad", 32_000_000)
-        assertEquals(corner.x, next.x, .0001f)
-        assertEquals(corner.y, next.y, .0001f)
+    @Test fun edgeLandingDoesNotTurnAndMinorCornerJitterCannotChangeDirection() {
+        val landing = TouchpadMotion(.98f, -.68f, 0)
+        landing.move(.98f, -.68f, 16_000_000)
+        assertEquals(ControlTouch("pad"), landing.sample("pad", 2_000_000_000))
+        val motion = TouchpadMotion(.8f, -.6f, 0)
+        motion.move(.98f, -.6f, 16_000_000)
+        val right = ControlTouch("pad", 1f, 0f)
+        assertEquals(right, motion.sample("pad", 16_000_000))
+        motion.move(.979f, -.602f, 32_000_000)
+        motion.move(.982f, -.599f, 48_000_000)
+        assertEquals(right, motion.sample("pad", 2_000_000_000))
+        // Deliberate movement along an edge can steer the continued turn.
+        motion.move(.98f, -.67f, 2_016_000_000)
+        assertEquals(ControlTouch("pad", 0f, -1f), motion.sample("pad", 3_000_000_000))
+    }
+    @Test fun reversalOutsideThePadIsImmediateAndDoesNotStick() {
+        val motion = TouchpadMotion(.8f, 0f, 0)
+        motion.move(1.1f, 0f, 16_000_000)
+        assertEquals(1f, motion.sample("pad", 1_000_000_000).x, 0f)
+        motion.move(1.07f, 0f, 1_016_000_000)
+        assertTrue(motion.sample("pad", 1_016_000_000).x < 0f)
+        assertEquals(ControlTouch("pad"), motion.sample("pad", 1_076_000_000))
+    }
+    @Test fun slowSwipesProduceStrongerOutputAndDoNotDropOutBetweenSamples() {
+        val motion = TouchpadMotion(0f, 0f, 0)
+        // The old 0.006-radius threshold ignored all these deliberate small movements.
+        for (i in 1..6) {
+            val now = i * 16_000_000L
+            motion.move(i * .0025f, 0f, now)
+            val touch = motion.sample("pad", now)
+            assertTrue(touch.x > 0f)
+            val one = touchpadAxes(touch.x, touch.y, 1f).first
+            val four = touchpadAxes(touch.x, touch.y, 4f).first
+            val sixteen = touchpadAxes(touch.x, touch.y, 16f).first
+            assertTrue(one > 8689)
+            assertTrue(four > one)
+            assertTrue(sixteen > four)
+        }
+        // A 0.02-radius / 16 ms swipe at 4x now reaches full travel (formerly 80%).
+        val normal = TouchpadMotion(0f, 0f, 0)
+        normal.move(.02f, 0f, 16_000_000)
+        val touch = normal.sample("pad", 16_000_000)
+        assertEquals(32767.toShort(), touchpadAxes(touch.x, touch.y, 4f).first)
+    }
+    @Test fun firstSwipeAfterAnIdlePauseIsNotDilutedByThePauseDuration() {
+        val moving = TouchpadMotion(0f, 0f, 0)
+        moving.move(.02f, 0f, 16_000_000)
+        val paused = TouchpadMotion(0f, 0f, 0)
+        paused.move(.02f, 0f, 2_016_000_000)
+        assertEquals(moving.sample("pad", 16_000_000), paused.sample("pad", 2_016_000_000))
     }
     @Test fun lateBatchedDeliveryUsesEventTimeWithoutVelocitySpikes() {
         val normal = TouchpadMotion(0f, 0f, 0)
