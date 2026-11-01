@@ -61,3 +61,12 @@ Automated results are supplied separately in TEST_REPORT.md. This checklist desc
 - [ ] Save mode/deadzone, restart and import/export the profile/QR; confirm settings persist. Import an old profile and confirm default 8-way mode.
 - [ ] Check a D-pad near each screen edge, portrait/landscape changes, and large text; ensure every arrow is reachable.
 - [ ] Verify Style shows compact sliders and color options; toggle visibility in the header, use Duplicate/Reset under Arrange, and undo/redo these edits.
+
+## Touchpad camera response (1.0.3)
+
+- [ ] In the Tomb Raider (2013) profile, choose Right stick → Input → Touchpad, Output stick Right, sensitivity 1× and Game deadzone compensation 28%. Save the profile and restart.
+- [ ] Confirm Windows diagnostics/`joy.cpl` shows RX/RY movement for slow and fast swipes, with LX/LY neutral. Confirm release, stillness and cancellation return RX/RY to zero.
+- [ ] Test camera rotation and aiming in Tomb Raider (2013), including slow adjustments, diagonal motion and repeated finger lifts. Adjust compensation to the game's actual deadzone and tune sensitivity independently.
+- [ ] Verify landing at any point does not jump the camera, tiny finger jitter does not start motion, and idle never rotates the camera.
+- [ ] Hold left-stick movement and a trigger while swiping the right touchpad; verify all inputs together and repeat with four connected controllers.
+- [ ] Export/import JSON and QR, relaunch, and switch profiles; confirm sensitivity/compensation persist and the joystick mode remains unchanged.
