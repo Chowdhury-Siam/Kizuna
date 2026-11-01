@@ -1,0 +1,61 @@
+# ── private working notes ────────────────────────────────────
+CLAUDE.md
+findings.md
+
+# ── C# / .NET ────────────────────────────────────────────────
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userprefs
+.vs/
+publish/
+dist/
+*.nupkg
+
+
+android/
+androidapp/
+androidapp2/
+
+# ── Android / Gradle ─────────────────────────────────────────
+.gradle/
+.kotlin/
+build/
+local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+captures/
+.cxx/
+
+# ── JetBrains / Android Studio ───────────────────────────────
+.idea/
+*.iml
+
+# ── Python (tools/) ──────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ── editors ──────────────────────────────────────────────────
+.vscode/
+
+# ── OS cruft ─────────────────────────────────────────────────
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# WPF temporary markup projects
+*_wpftmp.csproj
+
+# Private release signing backups
+ANDROID_KEYSTORE_BASE64
+ANDROID_STORE_PASSWORD
+ANDROID_KEY_ALIAS
+ANDROID_KEY_PASSWORD
+Kizuna-private-signing-kit*.zip
