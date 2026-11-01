@@ -1,3 +1,13 @@
+# Kizuna 1.0.4
+
+- Fixes the Android compilation error in the compact editor sliders by using the Material 3 SliderState overload for custom thumb/track content. Profile values remain synchronized after control selection, undo and reset.
+- Prepares cached SDK package ownership before restoration on hosted runners and uses fresh SDK cache keys, avoiding the repeated tar mode/timestamp permission errors in the supplied logs.
+- Retains touchpad camera scaling/compensation, D-pad/editor improvements, signed APK and actual Windows Setup packaging, all required tests, GPL-3.0-only, UDP/XInput/four-player/Steam behavior, and immutable published releases.
+
+See [TEST_REPORT.md](TEST_REPORT.md) for the uploaded run's results and checks actually performed on this correction.
+
+---
+
 # Kizuna 1.0.3
 
 - Corrects weak touchpad-to-stick output: relative swipe velocity is scaled for camera control instead of emitting only one frame's tiny displacement.
