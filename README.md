@@ -78,7 +78,18 @@ Choose the packages from [the latest stable release](https://github.com/Chowdhur
 | **Windows portable** | `Kizuna-v<version>-win-x64.zip` | Extract all files together and run `Kizuna.exe` |
 | **Source** | `Kizuna-v<version>-source.zip` | Build or modify the corresponding GPL source |
 
-Windows packages bundle .NET. Install the [ViGEmBus driver](https://github.com/nefarius/ViGEmBus/releases) once to create virtual Xbox controllers; this separate driver can require administrator approval and a restart.
+Windows packages bundle .NET.
+
+### Required Windows driver: ViGEmBus
+
+> [!IMPORTANT]
+> **ViGEmBus must be installed on the Windows PC for Kizuna to create virtual Xbox controllers.** Neither the Kizuna Setup EXE nor the portable ZIP installs this driver automatically.
+
+1. Open the [official ViGEmBus download page](https://github.com/nefarius/ViGEmBus/releases/latest) and download its Windows installer.
+2. Run that installer **on your Windows PC** and approve the administrator prompt.
+3. Restart the PC if the installer asks, then open Kizuna again.
+
+Install the driver **only once**. If ViGEmBus is already installed and working, keep it; Kizuna updates do not require reinstalling it. **No driver installation is needed on Android.**
 
 Release links become available after publishing this source to the intended GitHub repository. Actions builds embed their actual repository automatically, so forks get their own update channel.
 
@@ -186,9 +197,11 @@ The legacy source directories, namespaces and on-disk/wire format identifiers ar
 
 ## 📦 Publishing
 
-After the one-time [signing setup](docs/RELEASING.md), push a **new app version** to `main`, push its matching `vX.Y.Z` tag, or run **Build and publish stable** on the default branch with publishing enabled.
+After the one-time [automatic signing setup](docs/RELEASING.md#first-time-automatic-setup), push a **new app version** to `main`, push its matching `vX.Y.Z` tag, or run **Build and publish stable** on the default branch with publishing enabled.
 
 GitHub Actions runs protocol, Android JVM/lint, Android emulator UI and Windows checks. It then builds a signed APK, x64 Setup EXE, portable ZIP, corresponding source, checksums and the update manifest for the same commit, and creates a **stable/latest** GitHub release. If that version already exists, its tag and published files are left unchanged. A correction requires a version increment.
+
+Like Auralis, **Actions → Set up Android signing** generates and saves the release key once, then launches a fresh signed build. It needs a repository Secrets token named `ANDROID_SIGNING_SETUP_TOKEN` for that one setup run; future builds reuse `ANDROID_SIGNING_IDENTITY` automatically. Existing signing keys are preserved. Without setup, CI produces a separately installed Preview APK and skips stable publication. If you installed the earlier supplied APK, [import its private signing kit](docs/RELEASING.md#existing-installs-and-the-supplied-private-signing-kit) to keep update compatibility.
 
 Read [release and signing configuration](docs/RELEASING.md) before the first release. Nothing in the source package pushes to the original upstream repository.
 
