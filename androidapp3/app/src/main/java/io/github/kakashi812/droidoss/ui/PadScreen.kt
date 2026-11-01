@@ -131,8 +131,9 @@ fun PadScreen(transport: UdpTransport?, layout: ControllerLayout, modifier: Modi
                             val element = owned.element
                             if (element is StickElement && element.mode == StickMode.TOUCHPAD) {
                                 val now = System.nanoTime()
-                                val motion = touchpads.getOrPut(c.id) { TouchpadMotion(delta.x, delta.y, now) }
-                                motion.move(delta.x, delta.y, now)
+                                val eventTime = c.uptimeMillis * 1_000_000L
+                                val motion = touchpads.getOrPut(c.id) { TouchpadMotion(delta.x, delta.y, eventTime) }
+                                motion.move(delta.x, delta.y, now, eventTime)
                                 touches[c.id] = motion.sample(element.id, now)
                                 touchPoints[element.id] = Offset(delta.x.coerceIn(-1f, 1f), delta.y.coerceIn(-0.7f, 0.7f)) * owned.radius
                             } else touches[c.id] = ControlTouch(element.id, delta.x, delta.y)
@@ -183,6 +184,8 @@ fun PadScreen(transport: UdpTransport?, layout: ControllerLayout, modifier: Modi
                         val mask = dpadMasks[p.element.id] ?: 0
                         listOf(1 to "Up", 2 to "Down", 4 to "Left", 8 to "Right")
                             .filter { mask and it.first != 0 }.joinToString(" + ") { it.second }.ifEmpty { "Released" }
+                    } else if (p.element is StickElement && p.element.mode == StickMode.TOUCHPAD) {
+                        if ((touches.values + accessible.values).any { it.id == p.element.id && (it.x != 0f || it.y != 0f) }) "Moving" else "Stopped"
                     } else if (accessible.containsKey(p.element.id)) "Held" else "Released"
                     fun toggle(x: Float, y: Float): Boolean {
                         val next = ControlTouch(p.element.id, x, y)
