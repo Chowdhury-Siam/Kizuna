@@ -1,4 +1,29 @@
-# Kizuna 1.0.5 — validation report
+# Kizuna 1.0.6 — validation report
+
+## Touchpad edge continuation and stronger gain (2026-11-01)
+
+Version **1.0.6**, Android code **13**, local feature branch `fix/touchpad-edge-continuation`. The user reports that 1.0.5 stopped edge movement rather than correcting it, with sensitivity still too weak. That version explicitly cleared input outside the rectangle and expired all stationary motion after 60 ms. The correction restores captured edge motion and keeps a turn active while the finger remains down at an edge.
+
+The interior uses relative swipe velocity. After an outward swipe reaches the edge band (X ±0.92 or Y ±0.62 in control-radius units), motion continues in the swipe direction, including outside the visible rectangle, with a normalized magnitude bounded to one before sensitivity/compensation. Touchdown alone stays neutral. Deliberate inward movement responds without releasing; interior rest still becomes neutral after 60 ms. Small edge jitter accumulates until 0.01 radius instead of changing the held direction. Lift/cancellation removes pointer ownership through the existing PadScreen cleanup. Pointer capture prevents that gesture from activating neighboring controls. Physical button semantics now expose the actual held state so the Android neighbor regression has an observable positive control.
+
+Sensitivity changes are in the actual motion path: the velocity reference increases from 160 ms to 320 ms (twice the unsaturated gain), the interior movement threshold falls from 0.006 to 0.002 radii, and a first move after an idle pause uses a nominal 16 ms sample interval rather than including that entire pause in its speed estimate. The per-control 0.25×–16× range and existing saved values are retained. For example, a 0.02-radius / 16 ms swipe at 4× maps to full 32767 horizontal output, compared with approximately 28049 in 1.0.5. Full XInput travel remains the game's maximum requested turn speed; no protocol field can request more than its range.
+
+Regression sources cover all four edges/four corners held for two seconds without new events, continued outside motion, inward reversal, edge touchdown, minor jitter, steering along an edge, slow aiming at 1×/4×/16×, and first movement after a pause. Existing event-time, invalid-input, persistence, compensation and UDP tests remain. A new production UDP case checks sustained full camera output, a simultaneously held button, camera release with that button retained, and a fully neutral disconnect. The Android interaction case crosses a neighboring button under touchpad capture, releases, then presses that neighbor separately as a positive control. These Kotlin/Android regressions are included in the existing CI gates but **were not compiled or executed locally**.
+
+| Validation executed for 1.0.6 | Result |
+| --- | --- |
+| Local Python signing/protocol/release suite | **23 passed**, zero failures/skips, **5.047 seconds** |
+| Android/Windows version validator | Passed: **1.0.6**, Android code **13** |
+| Both workflow files, actionlint 1.7.7 | Passed |
+| Whitespace diff check | Passed |
+| Gradle JVM tests/lint/release/test-APK build | Attempted; failed before compilation while downloading Gradle 9.5.0 with `Network is unreachable` |
+| New/changed Kotlin and Android tests | **Not compiled/run locally**; hosted CI remains required |
+| Physical Tomb Raider feel, four-phone gameplay and upgrade | **Not tested** on this source version |
+| New APK/Windows installer | **Not built** for this version |
+
+GPL-3.0-only license/attribution, UDP/XInput transport, four-player/Steam code, signing setup/identity and release/cache workflows are retained. No remote push, secret mutation, hosted workflow dispatch or release publication was performed. Historical results below are not evidence that the current Android build passes.
+
+---
 
 ## Touchpad edge handling and extended sensitivity (2026-11-01)
 
