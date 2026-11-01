@@ -72,7 +72,7 @@ fun mixInput(layout: ControllerLayout, touches: Collection<ControlTouch>): PadSt
             }
             is StickElement -> {
                 val settings = if (e.stick == Stick.LEFT) layout.input.left else layout.input.right
-                val (x, y) = if (e.mode == StickMode.TOUCHPAD) touchpadAxes(touch.x, touch.y, e.touchpadSensitivity)
+                val (x, y) = if (e.mode == StickMode.TOUCHPAD) touchpadAxes(touch.x, touch.y, e.touchpadSensitivity, e.touchpadDeadzoneCompensation)
                     else settings.axes(touch.x, touch.y)
                 if (e.stick == Stick.LEFT) { result.thumbLX = x; result.thumbLY = y }
                 else { result.thumbRX = x; result.thumbRY = y }
@@ -94,15 +94,22 @@ fun steamPreset(name: String): ControllerLayout {
 }
 
 
-fun StickElement.sanitized(): StickElement = copy(touchpadSensitivity = touchpadSensitivity.safe(1f, 0.25f, 4f))
+fun StickElement.sanitized(): StickElement = copy(
+    touchpadSensitivity = touchpadSensitivity.safe(1f, 0.25f, 4f),
+    touchpadDeadzoneCompensation = touchpadDeadzoneCompensation.safe(0.28f, 0f, 0.6f),
+)
 
-/** Relative touchpad velocity drives the existing XInput stick axes, without joystick deadzones. */
-fun touchpadAxes(x: Float, y: Float, sensitivity: Float): Pair<Short, Short> {
+/** Relative motion becomes right/left XInput stick travel, with a game-deadzone floor only while moving. */
+fun touchpadAxes(x: Float, y: Float, sensitivity: Float, deadzoneCompensation: Float = 0.28f): Pair<Short, Short> {
     if (!x.isFinite() || !y.isFinite()) return 0.toShort() to 0.toShort()
-    val gain = sensitivity.safe(1f, 0.25f, 4f)
     val length = hypot(x, y)
-    val scale = gain / maxOf(1f, length * gain)
-    return (x * scale * 32767f).roundToInt().toShort() to (-y * scale * 32767f).roundToInt().toShort()
+    if (length == 0f || !length.isFinite()) return 0.toShort() to 0.toShort()
+    val gain = sensitivity.safe(1f, 0.25f, 4f)
+    val floor = deadzoneCompensation.safe(0.28f, 0f, 0.6f)
+    val speed = (length * gain).coerceAtMost(1f)
+    val travel = floor + (1f - floor) * speed
+    fun axis(value: Float) = (value / length * travel * 32767f).roundToInt().coerceIn(-32767, 32767).toShort()
+    return axis(x) to axis(-y)
 }
 
 /** Coordinates are normalized by control radius. A landing never jumps to an absolute position. */
@@ -114,14 +121,18 @@ class TouchpadMotion(private var x: Float, private var y: Float, private var tim
         if (!nextX.isFinite() || !nextY.isFinite() || now < time) return
         val dx = nextX - x
         val dy = nextY - y
-        if (dx != 0f || dy != 0f) {
-            val frame = 16_000_000f / (now - time).coerceIn(4_000_000, 50_000_000).toFloat()
-            velocityX = dx * frame; velocityY = dy * frame; movedAt = now
-        }
+        // Accumulate sub-pixel jitter rather than turning it into the game's minimum camera speed.
+        if (hypot(dx, dy) < MIN_MOVEMENT) return
+        // A normalized swipe velocity, not one frame's tiny displacement. Sensitivity scales this later.
+        val frame = 160_000_000f / (now - time).coerceIn(4_000_000, 100_000_000).toFloat()
+        velocityX = dx * frame; velocityY = dy * frame; movedAt = now
         x = nextX; y = nextY; time = now
     }
     fun sample(id: String, now: Long): ControlTouch =
         if (movedAt == Long.MIN_VALUE || now - movedAt >= IDLE_NANOS || now < movedAt) ControlTouch(id)
         else ControlTouch(id, velocityX, velocityY)
-    companion object { const val IDLE_NANOS = 60_000_000L }
+    companion object {
+        const val IDLE_NANOS = 60_000_000L
+        private const val MIN_MOVEMENT = 0.006f
+    }
 }
