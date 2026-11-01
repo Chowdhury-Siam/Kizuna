@@ -1,3 +1,13 @@
+# Kizuna 1.0.2
+
+- Replaces the undersized D-pad cross with larger, separated arrow faces and immediate direction highlights that match the transmitted button bits. Arrow faces snap to cardinal directions; diagonal gaps work in 8-way mode.
+- Adds saved D-pad 4-way/8-way mode and radial center deadzone settings. Sliding beyond the pad releases it; legacy edge layouts fit all four arrows on screen without rewriting saved coordinates. New layouts use a larger, raised D-pad.
+- Compacts the layout inspector: slim color-consistent sliders, small thumbs, visibility in the header, and Duplicate/Reset under Arrange. Slider and palette touch targets remain at least 48 dp.
+- Adds seven JVM regression cases and two Android interaction tests covering direction faces/gaps, input mixing, persistence, bounds, sliding/release and saved options. Execution status is in the test report.
+- Retains cached CI, automatic saved-key signing, immutable releases, GPL-3.0-only, the existing UDP/XInput protocol, four-player support, Steam and Windows installer packaging.
+
+---
+
 # Kizuna 1.0.1
 
 - Keeps Save reachable on narrow phones by separating editor actions into two compact rows and wrapping profile action buttons. The game title field now has a Done action to dismiss the keyboard.
