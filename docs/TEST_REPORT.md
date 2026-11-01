@@ -1,4 +1,29 @@
-# Kizuna 1.0.2 — validation report
+# Kizuna 1.0.3 — validation report
+
+## Touchpad camera output correction (2026-11-01)
+
+Version **1.0.3**, Android code **10**. The reported case is Tomb Raider (2013), with the right joystick changed to a touchpad for camera rotation. Source inspection found a plausible input-strength cause: a relative move of 0.02 control radii per 16 ms previously produced only about 655/32767 on RX, with no game-side deadzone compensation. Microsoft's [XInput guide](https://learn.microsoft.com/en-us/windows/win32/xinput/getting-started-with-xinput) gives a recommended right-stick deadzone of 8689 and notes games may choose their own values. **Tomb Raider's exact threshold has not been measured here.**
+
+The touchpad now scales swipe velocity using a 160 ms reference instead of a single 16 ms frame. A saved per-stick Game deadzone compensation setting defaults to 28% and can be adjusted from 0–60%, independently of sensitivity. Nonzero motion maps radially above this floor; zero, landing and idle stay exactly neutral. Very small position jitter is accumulated until it crosses a 0.006-radius movement threshold. Output direction, full-range limits, idle timeout, touch-release behavior and existing UDP right-stick fields are retained. Joystick mode and its tuning path are unchanged.
+
+The new setting is editable in both the layout inspector and profile input settings, sanitized on import/store loading, and retained in JSON/QR exports. Old files use the default compensation when touchpad mode is chosen. Existing profile sensitivity and output-stick assignments are preserved.
+
+Added four JVM regression test sources: ordinary slow-swipe output above the recommended XInput threshold; jitter/accumulated motion; configurable compensation with exact neutral output; and production UDP transport carrying mixed touchpad RX/RY then neutral without changing LX/LY. Existing frame-rate, persistence, import/sanitization and Android editor tests were extended or retained. These new Kotlin tests have **not run locally**.
+
+| Validation actually executed | Result |
+| --- | --- |
+| Python signing/protocol/release suite | **23 passed**, zero failures/skips, 3.454 seconds |
+| Both workflows, actionlint 1.7.7 | Passed |
+| Version validator | Passed: Android/Windows **1.0.3**, Android code **10** |
+| Whitespace diff check | No whitespace errors |
+| Gradle JVM tests, lint and instrumentation APK build | Attempted; wrapper download blocked by `Network is unreachable` before compilation |
+| New/changed Kotlin tests, Android emulator tests | **Not compiled/executed locally**; fresh hosted CI required |
+| Tomb Raider (2013) camera response, physical device, upgrade, multiplayer | **Not tested** for this source version |
+| New APK / Windows installer | **Not built** for this version |
+
+The generic deadzone explanation is an inference from source output and the XInput reference, not proof of Tomb Raider's runtime behavior. Start manual validation at Output stick Right, Touchpad mode, sensitivity 1× and compensation 28%; use Windows controller diagnostics and then verify slow camera/aim swipes in the game. No repository push, secret mutation, workflow dispatch or release publication was performed. Historical results below do not establish that this source version passes Android checks.
+
+---
 
 ## D-pad comfort and inspector update (2026-11-01)
 
