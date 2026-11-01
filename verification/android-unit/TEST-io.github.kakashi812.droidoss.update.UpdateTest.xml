@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.kakashi812.droidoss.update.UpdateTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-31T22:09:17.003Z" hostname="d6f1aa122dab" time="0.106">
+  <properties/>
+  <testcase name="prereleaseDraftAndExternalManifestUrlsAreRejected" classname="io.github.kakashi812.droidoss.update.UpdateTest" time="0.02"/>
+  <testcase name="sharedManifestSelectsOnlyNewerStableApk" classname="io.github.kakashi812.droidoss.update.UpdateTest" time="0.034"/>
+  <testcase name="repositoryAndAssetPathsCannotEscapeRelease" classname="io.github.kakashi812.droidoss.update.UpdateTest" time="0.005"/>
+  <testcase name="stableVersionOrderingIsNumericAndRejectsPrereleases" classname="io.github.kakashi812.droidoss.update.UpdateTest" time="0.001"/>
+  <testcase name="truncatedOrTamperedDownloadIsRejected" classname="io.github.kakashi812.droidoss.update.UpdateTest" time="0.027"/>
+  <testcase name="mismatchedManifestAndInstallerDataAreRejected" classname="io.github.kakashi812.droidoss.update.UpdateTest" time="0.018"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
