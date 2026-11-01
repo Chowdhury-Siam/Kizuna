@@ -59,3 +59,7 @@ ANDROID_STORE_PASSWORD
 ANDROID_KEY_ALIAS
 ANDROID_KEY_PASSWORD
 Kizuna-private-signing-kit*.zip
+
+# Auralis-style retained signing identity and one-time setup token
+ANDROID_SIGNING_IDENTITY
+ANDROID_SIGNING_SETUP_TOKEN
