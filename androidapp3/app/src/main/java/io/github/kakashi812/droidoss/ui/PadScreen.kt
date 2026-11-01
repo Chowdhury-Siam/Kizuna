@@ -91,10 +91,16 @@ fun PadScreen(transport: UdpTransport?, layout: ControllerLayout, modifier: Modi
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
         val placed = remember(layout, w, h) { layout.elements.filter { !it.hidden }.place(w, h) }
+        val dpadMasks = placed.mapNotNull { p ->
+            val dpad = p.element as? DpadElement ?: return@mapNotNull null
+            p.element.id to (touches.values + accessible.values).filter { it.id == dpad.id }.fold(0) { bits, touch ->
+                bits or dpadButtons(touch.x, touch.y, dpad.deadzone, dpad.diagonals)
+            }
+        }.toMap()
         val labels = rememberControlLabels(placed)
         val ink = MaterialTheme.colorScheme.onBackground
         val visualScale = placed.associate { p ->
-            val scale by animateFloatAsState(if (pressed[p.element.id] == true || accessible.containsKey(p.element.id)) 0.93f else 1f,
+            val scale by animateFloatAsState(if (p.element !is DpadElement && (pressed[p.element.id] == true || accessible.containsKey(p.element.id))) 0.93f else 1f,
                 animationSpec = spring(dampingRatio = 0.65f, stiffness = 700f), label = "Control press")
             p.element.id to scale
         }
@@ -112,7 +118,11 @@ fun PadScreen(transport: UdpTransport?, layout: ControllerLayout, modifier: Modi
                             if (!c.pressed) { touches.remove(c.id); touchpads.remove(c.id); continue }
                             val previous = touches[c.id]
                             var owned = placed.firstOrNull { it.element.id == previous?.id }
-                            if (owned != null && (owned.element is ButtonElement || owned.element is TriggerElement) && !owned.contains(c.position, minimumTouchRadius)) owned = null
+                            if (owned != null) {
+                                val releaseOnExit = owned.element is ButtonElement || owned.element is TriggerElement || owned.element is DpadElement
+                                val tolerance = if (owned.element is DpadElement) maxOf(owned.radius * 1.2f, minimumTouchRadius) else minimumTouchRadius
+                                if (releaseOnExit && !owned.contains(c.position, tolerance)) owned = null
+                            }
                             if (owned == null) owned = placed.lastOrNull { p ->
                                 p.element.enabled && p.contains(c.position, minimumTouchRadius) && touches.none { it.key != c.id && it.value.id == p.element.id }
                             }
@@ -149,7 +159,7 @@ fun PadScreen(transport: UdpTransport?, layout: ControllerLayout, modifier: Modi
         }) {
             placed.forEach { p ->
                 withTransform({ scale(visualScale[p.element.id] ?: 1f, visualScale[p.element.id] ?: 1f, p.centre) }) {
-                    drawControl(p, pressed, visualKnobs, labels, ink)
+                    drawControl(p, pressed, visualKnobs, labels, ink, dpadMasks[p.element.id] ?: 0)
                 }
             }
         }
@@ -169,10 +179,15 @@ fun PadScreen(transport: UdpTransport?, layout: ControllerLayout, modifier: Modi
             Box(Modifier.offset(with(density) { (p.centre.x - touchRadius).toDp() }, with(density) { (p.centre.y - touchRadius).toDp() })
                 .size(with(density) { (touchRadius * 2).toDp() }).semantics {
                     contentDescription = name
-                    stateDescription = if (accessible.containsKey(p.element.id)) "Held" else "Released"
+                    stateDescription = if (p.element is DpadElement) {
+                        val mask = dpadMasks[p.element.id] ?: 0
+                        listOf(1 to "Up", 2 to "Down", 4 to "Left", 8 to "Right")
+                            .filter { mask and it.first != 0 }.joinToString(" + ") { it.second }.ifEmpty { "Released" }
+                    } else if (accessible.containsKey(p.element.id)) "Held" else "Released"
                     fun toggle(x: Float, y: Float): Boolean {
-                        if (accessible.containsKey(p.element.id)) accessible.remove(p.element.id)
-                        else accessible[p.element.id] = ControlTouch(p.element.id, x, y)
+                        val next = ControlTouch(p.element.id, x, y)
+                        if (accessible[p.element.id] == next) accessible.remove(p.element.id)
+                        else accessible[p.element.id] = next
                         publish(); return true
                     }
                     onClick("Toggle hold") { toggle(0f, 0f) }
