@@ -114,6 +114,35 @@ class UdpTransportTest {
         }
     }
 
+    @Test fun heldTouchpadEdgesTransmitFullCameraTravelUntilReleaseWithoutChangingOtherInputs() {
+        Peer(legacy = true).use { peer ->
+            val connected = CountDownLatch(1)
+            val transport = UdpTransport("127.0.0.1", peer.port, onStateChange = { if (it is ConnectionState.Connected) connected.countDown() })
+            val stick = defaultLayout().elements.filterIsInstance<StickElement>().first { it.stick == Stick.RIGHT }.copy(mode = StickMode.TOUCHPAD, touchpadSensitivity = 4f)
+            val button = ButtonElement("held", .1f, .1f, .1f, label = "A", mask = 0x1000)
+            val layout = defaultLayout().copy(elements = listOf(stick, button))
+            val motion = TouchpadMotion(0f, 0f, 0)
+            fun send(touches: List<ControlTouch>) {
+                val input = mixInput(layout, touches)
+                transport.update { buttons = input.buttons; thumbRX = input.thumbRX; thumbRY = input.thumbRY }
+            }
+            try {
+                transport.start(); assertTrue(connected.await(3, TimeUnit.SECONDS))
+                motion.move(1.1f, 0f, 16_000_000)
+                // Sample long after the 60 ms interior idle timeout, with the same finger still down.
+                send(listOf(motion.sample(stick.id, 2_000_000_000), ControlTouch(button.id)))
+                val packet = peer.inputMatching { ByteBuffer.wrap(it).order(ByteOrder.LITTLE_ENDIAN).getShort(16).toInt() == 32767 && (it[9].toInt() and 255) == 0x10 }
+                val bytes = ByteBuffer.wrap(packet).order(ByteOrder.LITTLE_ENDIAN)
+                assertEquals(0.toShort(), bytes.getShort(12)); assertEquals(0.toShort(), bytes.getShort(14))
+                assertEquals(0.toShort(), bytes.getShort(18))
+                send(listOf(ControlTouch(button.id)))
+                peer.inputMatching { it.sliceArray(12..19).all { b -> b.toInt() == 0 } && (it[9].toInt() and 255) == 0x10 }
+                transport.stop()
+                assertTrue(peer.bye.poll(2, TimeUnit.SECONDS)!!.sliceArray(8..19).all { it.toInt() == 0 })
+            } finally { transport.stop() }
+        }
+    }
+
     @Test fun extendedHandshakeHonorsPlayerNameAndRumbleWithoutAndroidDependencies() {
         Peer().use { peer ->
             val connected = LinkedBlockingQueue<ConnectionState.Connected>()
