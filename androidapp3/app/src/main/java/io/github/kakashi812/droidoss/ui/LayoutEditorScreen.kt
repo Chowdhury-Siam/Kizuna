@@ -237,9 +237,11 @@ private fun Inspector(
         Column {
             Row(Modifier.fillMaxWidth().padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(controlName(selected), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-                    Text(controlKind(selected), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(controlName(selected), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+                Switch(checked = !selected.hidden, onCheckedChange = { visible -> change { it.with(hidden = !visible) } },
+                    modifier = Modifier.semantics { contentDescription = "Control visible" })
                 EditorIcon("×", "Close inspector", onClick = close)
             }
             PrimaryTabRow(selectedTabIndex = tab) {
@@ -250,10 +252,6 @@ private fun Inspector(
             Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 when (tab) {
                     0 -> {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Visible", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                            Switch(checked = !selected.hidden, onCheckedChange = { visible -> change { it.with(hidden = !visible) } }, modifier = Modifier.semantics { contentDescription = "Control visible" })
-                        }
                         EditorSlider("Size", selected.size, 0.04f..0.30f, "${(selected.size * 100).roundToInt()}%", resize, finished)
                         EditorSlider("Opacity", selected.opacity, 0.2f..1f, "${(selected.opacity * 100).roundToInt()}%", { value -> slider { it.with(opacity = value) } }, finished)
                         Text("Color", style = MaterialTheme.typography.labelLarge)
@@ -262,7 +260,7 @@ private fun Inspector(
                                 Surface(onClick = { change { it.with(color = color) } }, shape = CircleShape,
                                     color = if (color == 0xFFE0E4EC) MaterialTheme.colorScheme.onSurface else Color(color),
                                     border = if (selected.color == color) androidx.compose.foundation.BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null,
-                                    modifier = Modifier.size(44.dp).semantics { contentDescription = "$name color" }) {}
+                                    modifier = Modifier.size(48.dp).semantics { contentDescription = "$name color" }) {}
                             }
                         }
                     }
@@ -295,7 +293,18 @@ private fun Inspector(
                                 FilterChip(selected = selected.trigger == trigger, onClick = { change { (it as TriggerElement).copy(trigger = trigger, label = if (trigger == Trigger.LEFT) "LT" else "RT") } }, label = { Text(if (trigger == Trigger.LEFT) "Left" else "Right") })
                             } }
                         }
-                        is DpadElement -> Text("Four directions, including diagonals. Output: controller D-pad.", style = MaterialTheme.typography.bodyMedium)
+                        is DpadElement -> {
+                            Text("Directions", style = MaterialTheme.typography.labelLarge)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(false to "4-way", true to "8-way").forEach { (diagonals, label) ->
+                                    FilterChip(selected = selected.diagonals == diagonals,
+                                        onClick = { change { (it as DpadElement).copy(diagonals = diagonals) } }, label = { Text(label) })
+                                }
+                            }
+                            EditorSlider("Center deadzone", selected.deadzone, 0f..0.6f, "${(selected.deadzone * 100).roundToInt()}%",
+                                { value -> slider { (it as DpadElement).copy(deadzone = value) } }, finished)
+                            Text("Press an arrow or slide between directions. Diagonals use the gaps between arrows. Slide off to release.", style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                     2 -> {
                         EditorSlider("Horizontal", selected.x, 0f..1f, "${(selected.x * 100).roundToInt()}%", { move(it, null) }, finished)
@@ -310,13 +319,12 @@ private fun Inspector(
                             OutlinedButton(onClick = { layer(true) }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(4.dp)) { Text("Bring front") }
                         }
                         Text("Where controls overlap, the front layer receives touches.", style = MaterialTheme.typography.bodySmall)
-                        TextButton(onClick = reset) { Text("Reset this control") }
+                        TextButton(onClick = duplicate, enabled = canDuplicate, modifier = Modifier.fillMaxWidth()) { Text("Duplicate control") }
+                        TextButton(onClick = reset, modifier = Modifier.fillMaxWidth()) { Text("Reset this control") }
                     }
                 }
                 if (selected.hidden) Text("Hidden from play. Restore it here or from Controls.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             }
-            HorizontalDivider()
-            TextButton(onClick = duplicate, enabled = canDuplicate, modifier = Modifier.fillMaxWidth()) { Text("Duplicate control") }
         }
     }
 }
@@ -337,12 +345,19 @@ private fun EditorIcon(glyph: String, description: String, enabled: Boolean = tr
     IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.semantics { contentDescription = description }) { Text(glyph, fontSize = 24.sp) }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditorSlider(label: String, value: Float, range: ClosedFloatingPointRange<Float>, display: String,
     update: (Float) -> Unit, finished: () -> Unit = {}) {
+    val colors = SliderDefaults.colors(activeTrackColor = MaterialTheme.colorScheme.primary,
+        inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f), thumbColor = MaterialTheme.colorScheme.primary)
     Row { Text(label, Modifier.weight(1f), style = MaterialTheme.typography.labelLarge); Text(display, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary) }
     Slider(value = value.coerceIn(range.start, range.endInclusive), onValueChange = update, valueRange = range,
-        onValueChangeFinished = finished, modifier = Modifier.fillMaxWidth().semantics { contentDescription = label })
+        onValueChangeFinished = finished, colors = colors,
+        thumb = { Box(Modifier.size(18.dp).background(MaterialTheme.colorScheme.primary, CircleShape)) },
+        track = { state -> SliderDefaults.Track(sliderState = state, colors = colors, modifier = Modifier.height(4.dp),
+            drawStopIndicator = null, thumbTrackGapSize = 4.dp) },
+        modifier = Modifier.fillMaxWidth().height(48.dp).semantics { contentDescription = label })
 }
 
 internal fun controlName(e: ControlElement): String = when (e) {
