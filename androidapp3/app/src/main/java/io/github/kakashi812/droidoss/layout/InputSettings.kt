@@ -114,36 +114,51 @@ fun touchpadAxes(x: Float, y: Float, sensitivity: Float, deadzoneCompensation: F
     return axis(x) to axis(-y)
 }
 
-/** Relative coordinates stay within the visible rectangle; event time measures velocity, now measures idle. */
+/** Swipe velocity in the interior; reaching an edge keeps turning until an inward swipe or lift. */
 class TouchpadMotion(private var x: Float, private var y: Float, private var time: Long) {
-    private var inside = withinBounds(x, y)
+    private var anchored = x.isFinite() && y.isFinite()
     private var movedAt = Long.MIN_VALUE
     private var velocityX = 0f
     private var velocityY = 0f
-    private fun clear() { movedAt = Long.MIN_VALUE; velocityX = 0f; velocityY = 0f }
+    private var edgeHeld = false
+    private fun clear() { movedAt = Long.MIN_VALUE; velocityX = 0f; velocityY = 0f; edgeHeld = false }
     fun move(nextX: Float, nextY: Float, now: Long, eventTime: Long = now) {
         if (!nextX.isFinite() || !nextY.isFinite() || eventTime < time) {
-            clear(); inside = false; return
+            clear(); anchored = false; return
         }
-        val nextInside = withinBounds(nextX, nextY)
-        if (!nextInside || !inside) {
-            // Keep the pointer captured, but stop outside. Re-entry starts at this new position.
-            clear(); x = nextX; y = nextY; time = eventTime; inside = nextInside; return
+        if (!anchored) {
+            clear(); x = nextX; y = nextY; time = eventTime; anchored = true; return
         }
         val dx = nextX - x
         val dy = nextY - y
-        if (hypot(dx, dy) < MIN_MOVEMENT) return
-        // Pointer event timestamps avoid speed spikes when Android delivers events in a batch.
-        val frame = 160_000_000f / (eventTime - time).coerceIn(4_000_000, 100_000_000).toFloat()
-        velocityX = dx * frame; velocityY = dy * frame; movedAt = now
-        x = nextX; y = nextY; time = eventTime
+        val distance = hypot(dx, dy)
+        if (!distance.isFinite()) { clear(); anchored = false; return }
+        // Accumulate subpixel motion. Edge holds ignore small jitter without changing direction.
+        if (distance < (if (edgeHeld) EDGE_JITTER else MIN_MOVEMENT)) return
+        val atEdge = abs(nextX) >= EDGE_X || abs(nextY) >= EDGE_Y
+        val inward = (abs(x) >= EDGE_X && x * dx < 0f) || (abs(y) >= EDGE_Y && y * dy < 0f)
+        val outward = (abs(nextX) >= EDGE_X && nextX * dx > 0f) || (abs(nextY) >= EDGE_Y && nextY * dy > 0f)
+        edgeHeld = atEdge && (outward || (edgeHeld && !inward))
+        // Use event time, not callback arrival time. A paused finger must not dilute the next swipe.
+        val elapsed = (eventTime - time).coerceAtLeast(4_000_000)
+        val interval = if (elapsed >= IDLE_NANOS) 16_000_000L else elapsed
+        val frame = 320_000_000f / interval.toFloat()
+        if (edgeHeld) {
+            // Bounded, continuous turn in the swipe direction, including captured motion outside the pad.
+            velocityX = dx / distance; velocityY = dy / distance
+        } else {
+            velocityX = dx * frame; velocityY = dy * frame
+        }
+        movedAt = now; x = nextX; y = nextY; time = eventTime
     }
     fun sample(id: String, now: Long): ControlTouch =
-        if (movedAt == Long.MIN_VALUE || now - movedAt >= IDLE_NANOS || now < movedAt) ControlTouch(id)
+        if (movedAt == Long.MIN_VALUE || now < movedAt || (!edgeHeld && now - movedAt >= IDLE_NANOS)) ControlTouch(id)
         else ControlTouch(id, velocityX, velocityY)
     companion object {
         const val IDLE_NANOS = 60_000_000L
-        private const val MIN_MOVEMENT = 0.006f
-        private fun withinBounds(x: Float, y: Float) = x.isFinite() && y.isFinite() && abs(x) <= 1f && abs(y) <= 0.7f
+        private const val MIN_MOVEMENT = 0.002f
+        private const val EDGE_JITTER = 0.01f
+        private const val EDGE_X = 0.92f
+        private const val EDGE_Y = 0.62f
     }
 }
