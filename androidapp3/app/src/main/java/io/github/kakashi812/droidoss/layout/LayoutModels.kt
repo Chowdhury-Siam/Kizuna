@@ -83,6 +83,7 @@ data class StickElement(
     val stick: Stick,
     val mode: StickMode = StickMode.JOYSTICK,
     val touchpadSensitivity: Float = 1f,
+    val touchpadDeadzoneCompensation: Float = 0.28f,
 ) : ControlElement
 
 /**
