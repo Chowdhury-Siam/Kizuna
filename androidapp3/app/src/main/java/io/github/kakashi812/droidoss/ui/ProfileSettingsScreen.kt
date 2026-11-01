@@ -2,11 +2,15 @@ package io.github.kakashi812.droidoss.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import io.github.kakashi812.droidoss.layout.*
 
@@ -14,9 +18,12 @@ import io.github.kakashi812.droidoss.layout.*
 fun ProfileSettingsScreen(initial: ControllerLayout, onSave: (ControllerLayout) -> Unit, onCancel: () -> Unit) {
     var profile by remember(initial) { mutableStateOf(initial) }
     val context = LocalContext.current
+    val focus = LocalFocusManager.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Tune ${profile.name}", style = MaterialTheme.typography.headlineSmall)
-        OutlinedTextField(profile.game, { profile = profile.copy(game = it.take(80)) }, label = { Text("Game / Steam title") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(profile.game, { profile = profile.copy(game = it.take(80)) }, label = { Text("Game / Steam title") }, modifier = Modifier.fillMaxWidth(),
+            singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }))
         Text("Steam receives a standard Xbox 360 controller. These settings change this profile's input.", style = MaterialTheme.typography.bodySmall)
         listOf(Stick.LEFT, Stick.RIGHT).forEach { side ->
             val s = if (side == Stick.LEFT) profile.input.left else profile.input.right
@@ -56,7 +63,7 @@ fun ProfileSettingsScreen(initial: ControllerLayout, onSave: (ControllerLayout) 
         TuneSlider("Trigger travel range", profile.input.triggerRange, 0.2f..1f) { profile = profile.copy(input = profile.input.copy(triggerRange = it)) }
         TuneSlider("Vibration strength", profile.input.vibration, 0f..1f) { profile = profile.copy(input = profile.input.copy(vibration = it)) }
         TextButton(onClick = { vibrate(context, profile.input.vibration) }) { Text("Test vibration") }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onCancel) { Text("Cancel") }
             TextButton(onClick = { profile = profile.copy(input = InputSettings()) }) { Text("Reset input") }
             Button(onClick = { onSave(profile.copy(input = profile.input.sanitized())) }) { Text("Save profile") }
