@@ -68,8 +68,67 @@ class TouchpadTest {
         assertTrue(x > 0); assertEquals(x, y)
         assertEquals(0.toShort() to 0.toShort(), touchpadAxes(Float.NaN, 1f, 1f, .4f))
     }
+    @Test fun everyEdgePausesAndReentryRebasesInsteadOfJumping() {
+        val outside = listOf(1.1f to 0f, -1.1f to 0f, 0f to .8f, 0f to -.8f, 1.1f to -.8f)
+        for ((x, y) in outside) {
+            val motion = TouchpadMotion(0f, 0f, 0)
+            motion.move(.1f, 0f, 16_000_000)
+            assertTrue(motion.sample("pad", 16_000_000).x > 0f)
+            motion.move(x, y, 32_000_000)
+            assertEquals(ControlTouch("pad"), motion.sample("pad", 32_000_000))
+            motion.move(x * 1.1f, y * 1.1f, 48_000_000)
+            assertEquals(ControlTouch("pad"), motion.sample("pad", 48_000_000))
+            motion.move(.5f, -.2f, 64_000_000)
+            assertEquals(ControlTouch("pad"), motion.sample("pad", 64_000_000))
+            motion.move(.52f, -.2f, 80_000_000)
+            val resumed = motion.sample("pad", 80_000_000)
+            assertTrue(resumed.x > 0f)
+            assertEquals(0f, resumed.y, 0f)
+        }
+    }
+    @Test fun motionNearTheTopRightCornerStaysRelative() {
+        val motion = TouchpadMotion(.90f, -.65f, 0)
+        motion.move(.92f, -.64f, 16_000_000)
+        val corner = motion.sample("pad", 16_000_000)
+        assertEquals(.2f, corner.x, .0001f)
+        assertEquals(.1f, corner.y, .0001f)
+        motion.move(.94f, -.63f, 32_000_000)
+        val next = motion.sample("pad", 32_000_000)
+        assertEquals(corner.x, next.x, .0001f)
+        assertEquals(corner.y, next.y, .0001f)
+    }
+    @Test fun lateBatchedDeliveryUsesEventTimeWithoutVelocitySpikes() {
+        val normal = TouchpadMotion(0f, 0f, 0)
+        normal.move(.02f, 0f, 16_000_000)
+        normal.move(.04f, 0f, 32_000_000)
+        val delayed = TouchpadMotion(0f, 0f, 0)
+        delayed.move(.02f, 0f, now = 1_000_000_000, eventTime = 16_000_000)
+        delayed.move(.04f, 0f, now = 1_000_001_000, eventTime = 32_000_000)
+        assertEquals(normal.sample("pad", 32_000_000), delayed.sample("pad", 1_000_001_000))
+        assertEquals(ControlTouch("pad"), delayed.sample("pad", 1_060_001_000))
+    }
+    @Test fun invalidOrReorderedMotionStopsAndRequiresANewAnchor() {
+        val motion = TouchpadMotion(0f, 0f, 0)
+        motion.move(.1f, 0f, 16_000_000)
+        motion.move(.2f, 0f, now = 20_000_000, eventTime = 15_000_000)
+        assertEquals(ControlTouch("pad"), motion.sample("pad", 20_000_000))
+        motion.move(.2f, 0f, 32_000_000)
+        assertEquals(ControlTouch("pad"), motion.sample("pad", 32_000_000))
+        motion.move(.3f, 0f, 48_000_000)
+        assertTrue(motion.sample("pad", 48_000_000).x > 0f)
+        motion.move(Float.NaN, 0f, 64_000_000)
+        assertEquals(ControlTouch("pad"), motion.sample("pad", 64_000_000))
+    }
+    @Test fun higherGainWorksAboveFourWithoutOverflowOrIdleDrift() {
+        val four = touchpadAxes(.02f, 0f, 4f).first
+        val sixteen = touchpadAxes(.02f, 0f, 16f).first
+        assertTrue(sixteen > four)
+        assertEquals(32767.toShort(), touchpadAxes(.1f, 0f, 16f).first)
+        assertEquals((-32767).toShort(), touchpadAxes(-.1f, 0f, 16f).first)
+        assertEquals(0.toShort() to 0.toShort(), touchpadAxes(0f, 0f, 16f))
+    }
     @Test fun settingsPersistInFilesQrAndStoreWithOldLayoutsStillReadable() {
-        val e = defaultLayout().elements.filterIsInstance<StickElement>().last().copy(mode = StickMode.TOUCHPAD, touchpadSensitivity = 2.25f, touchpadDeadzoneCompensation = .42f)
+        val e = defaultLayout().elements.filterIsInstance<StickElement>().last().copy(mode = StickMode.TOUCHPAD, touchpadSensitivity = 12.5f, touchpadDeadzoneCompensation = .42f)
         val layout = defaultLayout().copy(id = "custom1", elements = listOf(e))
         for (text in listOf(LayoutShare.encodeFile(layout), LayoutShare.encodeQr(layout))) {
             val decoded = LayoutShare.decode(text) as ImportResult.Ok
@@ -85,7 +144,7 @@ class TouchpadTest {
     @Test fun invalidSettingsAreBoundedAndHistoryRestoresMode() {
         val e = defaultLayout().elements.filterIsInstance<StickElement>().first()
         assertEquals(1f, e.copy(touchpadSensitivity = Float.NaN).sanitized().touchpadSensitivity, 0f)
-        assertEquals(4f, e.copy(touchpadSensitivity = 999f).sanitized().touchpadSensitivity, 0f)
+        assertEquals(16f, e.copy(touchpadSensitivity = 999f).sanitized().touchpadSensitivity, 0f)
         assertEquals(.28f, e.copy(touchpadDeadzoneCompensation = Float.NaN).sanitized().touchpadDeadzoneCompensation, 0f)
         assertEquals(.6f, e.copy(touchpadDeadzoneCompensation = 999f).sanitized().touchpadDeadzoneCompensation, 0f)
         val h = EditHistory<StickElement>(); h.checkpoint(e)
