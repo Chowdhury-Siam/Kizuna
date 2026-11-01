@@ -32,7 +32,7 @@ Automated results are supplied separately in TEST_REPORT.md. This checklist desc
 ## Release
 
 - Run PR checks and emulator instrumentation on the actual hosted workflow.
-- Test both no-secrets unsigned builds and a complete persistent signing configuration; partial secrets must fail.
+- Test the no-secrets Preview build, consolidated saved identity and complete legacy signing configuration; partial secrets must fail without key replacement.
 - Confirm Android/server versions agree with the tag, SHA256SUMS match, source and GPL are included, and a second publication of the same release is skipped without touching its tag or assets.
 
 ## Kizuna branding, presets and updates
@@ -43,4 +43,11 @@ Automated results are supplied separately in TEST_REPORT.md. This checklist desc
 - Install a Kizuna release signed with the permanent kit, then publish a newer signed version. Check automatic/manual discovery, download progress, permission denial/retry and Android's native installer. Confirm profiles/settings survive the real upgrade.
 - Reject a wrong-signing-key APK, a wrong application ID, a truncated package, a mismatched checksum and a prerelease. Check missing release, offline and rate-limit messages.
 - On Windows, compile/run Setup on x64, test normal install/uninstall and silent update/restart. Verify custom settings persist and active players receive a disconnect confirmation. Check the portable-to-installed transition.
-- Push a new app version on the actual repository after setting all four signing secrets. Confirm the signed APK, Setup EXE, portable ZIP, source, manifest and checksums all come from one successful run. A version tag pointing to another commit must fail before publication.
+- Push a new app version on the actual repository after completing automatic signing setup or importing the existing identity. Confirm the signed APK, Setup EXE, portable ZIP, source, manifest and checksums all come from one successful run. A version tag pointing to another commit must fail before publication.
+
+## Automatic signing setup
+
+- Run **Set up Android signing** manually from main with a repository-scoped Secrets read/write token. Confirm it saves one identity and queues a new stable build; remove the setup token and confirm ordinary builds still sign.
+- Run setup again with the token and confirm no key changes. Incomplete existing secrets must fail without replacement. Concurrent setup runs must serialize.
+- Check that a missing identity produces only a separate Preview APK and skips stable publication. A PR must not receive either production identity or legacy signing secrets.
+- Import the earlier private signing kit to preserve the supplied APK's signing identity, then exercise a real signed upgrade and confirm profiles/settings survive.
