@@ -51,3 +51,13 @@ Automated results are supplied separately in TEST_REPORT.md. This checklist desc
 - Run setup again with the token and confirm no key changes. Incomplete existing secrets must fail without replacement. Concurrent setup runs must serialize.
 - Check that a missing identity produces only a separate Preview APK and skips stable publication. A PR must not receive either production identity or legacy signing secrets.
 - Import the earlier private signing kit to preserve the supplied APK's signing identity, then exercise a real signed upgrade and confirm profiles/settings survive.
+
+## D-pad comfort and compact inspector (1.0.2)
+
+- [ ] On the Redmi Note 10 Pro, tap each arrow center and edges; confirm one direction in `joy.cpl` and the Windows visualizer.
+- [ ] In 8-way mode, slide through all four diagonal gaps without lifting; verify two highlighted directions and two transmitted bits.
+- [ ] In 4-way mode, drag a circle and verify only one directional bit at a time. Return to center, slide outside, lift and cancel; verify neutral input.
+- [ ] Hold a D-pad direction while pressing A/triggers with another finger; release either finger independently. Repeat with four connected phones.
+- [ ] Save mode/deadzone, restart and import/export the profile/QR; confirm settings persist. Import an old profile and confirm default 8-way mode.
+- [ ] Check a D-pad near each screen edge, portrait/landscape changes, and large text; ensure every arrow is reachable.
+- [ ] Verify Style shows compact sliders and color options; toggle visibility in the header, use Duplicate/Reset under Arrange, and undo/redo these edits.
