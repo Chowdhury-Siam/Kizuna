@@ -1,4 +1,34 @@
-# Kizuna 1.0.0 — validation report
+# Kizuna 1.0.1 — validation report
+
+## Android integration fixes and CI caching (2026-11-01)
+
+The user-provided hosted run compiled Android debug/test APKs and executed all eight instrumentation tests: four passed and four failed. That run is failure evidence for **1.0.0**, not a passing result for this update. Deprecation/native-strip warnings did not stop compilation; the test assertions stopped the job.
+
+Source changes in **1.0.1**, Android code **8**:
+
+- The editor's single-row minimum action widths could place Save beyond the phone's bounds after a control was selected. Narrow layouts now put undo/redo/control actions on a second compact row; wide layouts keep one row. The touchpad save test uses a 320 dp viewport and checks the full Save button bounds before physically tapping it and checking the saved mode/sensitivity.
+- The profile footer similarly used an unbounded Row. It now wraps its buttons with FlowRow. The title field has a Done IME action that clears focus; the profile test completes editing, verifies the full Save button bounds at 320 dp, then physically taps and checks the saved title/input. Callback waits now report a missing save directly rather than failing with a null dereference.
+- The hold/release accessibility test now invokes `SemanticsActions.OnClick`, as TalkBack does. Its former `performClick()` injects a normal touch on Android, which releases after tapping; it does not exercise the explicit accessibility hold action. Production gamepad touch handling is unchanged.
+- The UDP integration peer now binds `127.0.0.1`, matching its client. `getLoopbackAddress()` can select IPv6, which is incompatible with that IPv4-only client on such devices. The production transport and wire format are unchanged. The disconnect assertion additionally checks neutral triggers and stick axes.
+
+Workflow caching now covers Gradle dependency/wrapper/task outputs, Linux/Windows NuGet packages, the added Android build SDK, emulator/system image and a clean AVD boot snapshot. SDK and snapshot saves occur before tests, and the test run does not save over the clean snapshot. AVD keys include runner image and native emulator/system-image fingerprints. All original jobs and the retained-signature gate still block stable publication on failure. No signing material or configuration-cache state is explicitly cached. See [the caching guide](RELEASING.md#ci-caching-and-diagnostics).
+
+Validation actually executed for this update:
+
+| Check | Result |
+| --- | --- |
+| Existing Python signing/protocol/release suite | **23 passed**, zero failures/skips, 4.350 seconds |
+| actionlint 1.7.7, both workflows | Passed |
+| Bash syntax and workflow wiring inspection | Passed: cache preparation order, snapshot reuse, wrapper chmod, all required release jobs retained |
+| Version validator | Passed: Android/Windows **1.0.1**, Android code **8**, tag **v1.0.1** |
+| Android Gradle tests/lint/test-APK build | Attempted; wrapper download failed with `Network is unreachable` before Gradle could start |
+| Updated Android instrumentation tests | **Not executed locally**; requires a fresh hosted run |
+| New APK/Setup EXE, physical upgrade, gameplay | **Not built or tested** for this update |
+| Hosted cache hit/speed measurements | **Not measured**; first run must populate caches |
+
+No GitHub push, workflow dispatch, signing-secret mutation or release publication was performed. Historical test totals below describe earlier source snapshots and are not a substitute for rerunning the changed Android tests.
+
+---
 
 ## Gradle wrapper permission fix (2026-11-01)
 
