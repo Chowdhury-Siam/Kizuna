@@ -1,3 +1,14 @@
+# Kizuna 1.0.3
+
+- Corrects weak touchpad-to-stick output: relative swipe velocity is scaled for camera control instead of emitting only one frame's tiny displacement.
+- Adds saved Game deadzone compensation (default 28%, adjustable 0–60%) alongside touchpad sensitivity. Moving output can cross game-side neutral thresholds; landing, idle and release remain neutral. Small finger jitter is filtered and intentional slow travel accumulates.
+- Adds regression test sources for slow-swipe camera output, jitter, compensation/neutral behavior, and an actual production UDP transport path carrying right-stick camera values then neutral. Existing persistence and editor tests now cover the saved compensation value.
+- Keeps the same UDP/XInput fields, four players, Steam path, joystick behavior, D-pad/editor improvements, retained signing identity, cached CI and immutable releases.
+
+Tomb Raider (2013) gameplay and the new Kotlin tests still require hosted/device validation; see [TEST_REPORT.md](TEST_REPORT.md). This release does not assume a particular game's exact deadzone.
+
+---
+
 # Kizuna 1.0.2
 
 - Replaces the undersized D-pad cross with larger, separated arrow faces and immediate direction highlights that match the transmitted button bits. Arrow faces snap to cardinal directions; diagonal gaps work in 8-way mode.
