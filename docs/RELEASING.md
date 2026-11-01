@@ -6,7 +6,7 @@ The intended repository is `Chowdhury-Siam/Kizuna`. Publish the supplied source 
 
 GitHub Actions embeds `${{ github.repository }}` into both apps. Local builds default to `Chowdhury-Siam/Kizuna`; override with Android `-PreleaseRepository=owner/repo` or Windows `-p:ReleaseRepository=owner/repo`. Installed apps retain the update channel embedded when they were built.
 
-Keep `versionName` in `androidapp3/app/build.gradle.kts` and `<Version>` in `server/DroidOSS.App/DroidOSS.App.csproj` identical. Stable releases require `major.minor.patch`. Increase Android `versionCode` for every app update. Current version is **1.0.4**, code **11**. `python tools/release.py` validates and prints these values.
+Keep `versionName` in `androidapp3/app/build.gradle.kts` and `<Version>` in `server/DroidOSS.App/DroidOSS.App.csproj` identical. Stable releases require `major.minor.patch`. Increase Android `versionCode` for every app update. Current version is **1.0.5**, code **12**. `python tools/release.py` validates and prints these values.
 
 ## Android signing
 
