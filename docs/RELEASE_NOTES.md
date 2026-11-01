@@ -1,3 +1,13 @@
+# Kizuna 1.0.6
+
+- Restores touchpad input at and beyond its edges. Swiping outward into the edge band continues turning in the swipe direction while held; inward movement responds without lifting, and lift/cancellation releases the stick. Landing alone at an edge stays neutral.
+- Doubles the actual swipe-velocity gain at each saved sensitivity, retains the 0.25×–16× range, and reduces the movement threshold from 0.006 to 0.002 control radii so slow aiming does not drop out. Idle time no longer dilutes the first swipe after a pause.
+- Filters small edge jitter, retains event-based timing and independent pointer ownership, and caps camera output to the existing XInput range. Ordinary joystick tuning, mappings and saved profile values are preserved.
+- Extends JVM/UDP and Android touch regressions for held edges/corners, reversals, slow-swipe strength, neighboring buttons and release. Physical button semantics now reflect real held input, allowing the neighbor test to check the actual state.
+- Android/Windows version 1.0.6, Android code 13. Signing, stable-release gates, caching, four-player transport, Steam and GPL-3.0-only licensing are retained. See TEST_REPORT.md for executed checks and blocked Android validation.
+
+---
+
 # Kizuna 1.0.5
 
 - Pauses touchpad camera input outside the visible pad rectangle while keeping pointer ownership until lift. Re-entry rebases the gesture and avoids a jump or unintended neighboring-button press.
