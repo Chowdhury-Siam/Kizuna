@@ -1,5 +1,13 @@
 package io.github.kakashi812.droidoss
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -25,11 +33,15 @@ class ModernizationUiTest {
         var saved: ControllerLayout? = null
         compose.setContent {
             KizunaTheme(themeMode = "Light") {
-                ProfileSettingsScreen(steamPreset("Racing"), onSave = { saved = it }, onCancel = {})
+                NarrowPhone { ProfileSettingsScreen(steamPreset("Racing"), onSave = { saved = it }, onCancel = {}) }
             }
         }
         compose.onNodeWithText("Game / Steam title").performTextReplacement("Steam game")
-        compose.onNodeWithText("Save profile").performScrollTo().performClick()
+        compose.onNodeWithText("Game / Steam title").performImeAction()
+        val save = compose.onNode(hasText("Save profile") and hasClickAction()).performScrollTo()
+        assertInsidePhone(save)
+        save.performClick()
+        compose.waitUntil(5_000) { saved != null }
         compose.runOnIdle {
             assertEquals("Steam game", saved?.game)
             assertTrue(saved!!.input.analogTriggers)
@@ -38,9 +50,10 @@ class ModernizationUiTest {
 
     @Test fun accessibleButtonCanBeHeldAndReleased() {
         compose.setContent { KizunaTheme(themeMode = "Dark") { PadScreen(null, defaultLayout()) } }
-        compose.onNodeWithContentDescription("A").performClick()
+        // TalkBack invokes the semantic action. A physical tap presses and releases normally.
+        compose.onNodeWithContentDescription("A").performSemanticsAction(SemanticsActions.OnClick) { it() }
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Held"))
-            .performClick()
+            .performSemanticsAction(SemanticsActions.OnClick) { it() }
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Released"))
     }
 
@@ -53,24 +66,19 @@ class ModernizationUiTest {
 
     @Test fun editorCanChooseTouchpadAndSaveSensitivity() {
         var saved: ControllerLayout? = null
-        compose.setContent { KizunaTheme { LayoutEditorScreen(defaultLayout().copy(id = "custom1"), onSave = { saved = it }, onCancel = {}) } }
+        compose.setContent { KizunaTheme { NarrowPhone { LayoutEditorScreen(defaultLayout().copy(id = "custom1"), onSave = { saved = it }, onCancel = {}) } } }
         compose.onNodeWithText("Controls").performClick()
         compose.onNodeWithText("Right stick").performScrollTo().performClick()
         compose.onNodeWithText("Input").performClick()
         compose.onNodeWithText("Touchpad").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Touchpad sensitivity").performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(2f) }
-        compose.runOnIdle {
-            val context = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext
-            val target = java.io.File(context.getExternalFilesDir(null), "editor-touchpad.png")
-            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()?.let { bitmap ->
-                target.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
-                bitmap.recycle()
-            }
-        }
         compose.onNodeWithContentDescription("Close inspector").performClick()
-        compose.onNodeWithText("Save").performClick()
+        val save = compose.onNode(hasText("Save") and hasClickAction())
+        assertInsidePhone(save)
+        save.performClick()
+        compose.waitUntil(5_000) { saved != null }
         compose.runOnIdle {
-            val right = saved!!.elements.filterIsInstance<StickElement>().single { it.stick == Stick.RIGHT }
+            val right = requireNotNull(saved).elements.filterIsInstance<StickElement>().single { it.stick == Stick.RIGHT }
             assertEquals(StickMode.TOUCHPAD, right.mode)
             assertEquals(2f, right.touchpadSensitivity, 0.01f)
         }
@@ -90,4 +98,17 @@ class ModernizationUiTest {
         compose.onNodeWithText("A").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Control visible").assertIsOn()
     }
+
+    private fun assertInsidePhone(node: SemanticsNodeInteraction) {
+        node.assertIsDisplayed()
+        val viewport = compose.onNodeWithTag("Phone viewport").getUnclippedBoundsInRoot()
+        val bounds = node.getUnclippedBoundsInRoot()
+        assertTrue("Action must fit the phone width", bounds.left >= viewport.left && bounds.right <= viewport.right)
+        assertTrue("Action must fit the phone height", bounds.top >= viewport.top && bounds.bottom <= viewport.bottom)
+    }
+}
+
+@Composable
+private fun NarrowPhone(content: @Composable () -> Unit) {
+    Box(Modifier.width(320.dp).fillMaxHeight().testTag("Phone viewport")) { content() }
 }
