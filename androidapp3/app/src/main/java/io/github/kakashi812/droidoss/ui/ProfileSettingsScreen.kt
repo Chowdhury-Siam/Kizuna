@@ -39,7 +39,10 @@ fun ProfileSettingsScreen(initial: ControllerLayout, onSave: (ControllerLayout) 
                         StickModeSelector(control, onChange = ::updateControl)
                         if (control.mode == StickMode.TOUCHPAD) {
                             TuneSlider("Touchpad sensitivity", control.touchpadSensitivity, 0.25f..4f) { updateControl(control.copy(touchpadSensitivity = it)) }
-                            Text("Relative swipes drive this stick. Lift or hold still to stop.", style = MaterialTheme.typography.bodySmall)
+                            TuneSlider("Game deadzone compensation", control.touchpadDeadzoneCompensation, 0f..0.6f) {
+                                updateControl(control.copy(touchpadDeadzoneCompensation = it))
+                            }
+                            Text((if (side == Stick.RIGHT) "Swipes rotate the camera. " else "Swipes control movement. ") + "Raise compensation if slow swipes do nothing. Lift or hold still to stop.", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     if (control?.mode != StickMode.TOUCHPAD) {
