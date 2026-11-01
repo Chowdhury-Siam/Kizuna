@@ -1,4 +1,18 @@
-# Kizuna 1.0.0 — rebrand, releases, updates and presets
+# Kizuna 1.0.0 — validation report
+
+## Automatic signing workflow update (2026-11-01)
+
+This CI-only update adopts Auralis’s retained signing flow. **23 Python tests passed** (16 signing/setup regressions plus the 7 existing protocol/release tests), with no failures or skips. Native JDK checks generated and restored PKCS12 keys, signed a probe archive, rejected incorrect store/key passwords and aliases, and verified Java Properties escaping. GitHub secret operations were mocked: tests covered preserving existing identities and legacy names, partial-secret refusal, setup event/branch/token guards, one bundled secret write, reuse on a second run, a secret appearing during setup, and redacted errors. Private-kit import preserved the test keystore bytes and refused an overwrite.
+
+Both `checks.yml` and the new `android-signing.yml` passed local actionlint. Setup saves one `ANDROID_SIGNING_IDENTITY` using a one-time repository Secrets token and dispatches a fresh stable build. Missing keys now produce an isolated release-mode Preview APK and skip stable publication, while partial/invalid saved credentials fail without regeneration. Existing complete legacy keys retain priority. The earlier SDK setup fix and ViGEmBus README instructions remain.
+
+Only CI helpers, workflows, tests and documentation changed; app version **1.0.0**, code **7**, remain unchanged. No Android/.NET rebuild or real APK upgrade was run for this update. No signing secret was read or written on GitHub, no workflow was dispatched, and no release was created or changed by this work. Hosted end-to-end signing/publication still needs the owner’s one-time setup and CI run.
+
+The original app-build report below is historical; its four-secret setup instructions are superseded by [the current signing guide](RELEASING.md#android-signing).
+
+---
+
+## Original app validation — rebrand, releases, updates and presets
 
 Date: 2026-11-01 (Asia/Dhaka)
 Branch: `feature/kizuna-rebrand-releases`
