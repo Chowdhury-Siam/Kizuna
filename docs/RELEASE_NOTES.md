@@ -1,3 +1,14 @@
+# Kizuna 1.0.1
+
+- Keeps Save reachable on narrow phones by separating editor actions into two compact rows and wrapping profile action buttons. The game title field now has a Done action to dismiss the keyboard.
+- Repairs Android integration tests: exercises TalkBack hold through its semantic action, checks Save bounds at 320 dp, verifies saved touchpad/profile settings, and binds the UDP test peer to the same IPv4 loopback address as its client. Neutral disconnect checks now cover triggers and all stick axes as well as buttons.
+- Adds Android SDK, emulator SDK/clean boot snapshot and Linux/Windows NuGet caching, plus Gradle task-output caching. All tests and stable-release gates remain required.
+- Preserves automatic retained APK signing, Windows Setup/portable packaging, GPL-3.0-only, four-controller UDP/XInput and Steam compatibility. Existing signing keys and published releases are not replaced.
+
+See [TEST_REPORT.md](TEST_REPORT.md) for checks actually executed and the remaining hosted Android build/emulator verification.
+
+---
+
 # Kizuna 1.0.0
 
 - Rebrands droidOSS as Kizuna with a new original logo, Android launcher icons, Windows icon/header and README banner.
