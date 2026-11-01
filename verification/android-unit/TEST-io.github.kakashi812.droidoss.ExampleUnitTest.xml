@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.kakashi812.droidoss.ExampleUnitTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-10-31T22:09:12.329Z" hostname="d6f1aa122dab" time="0.014">
+  <properties/>
+  <testcase name="addition_isCorrect" classname="io.github.kakashi812.droidoss.ExampleUnitTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
