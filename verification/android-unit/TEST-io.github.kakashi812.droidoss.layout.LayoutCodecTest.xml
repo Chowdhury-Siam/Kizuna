@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.kakashi812.droidoss.layout.LayoutCodecTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-10-31T22:09:12.800Z" hostname="d6f1aa122dab" time="0.113">
+  <properties/>
+  <testcase name="no more than the custom layout limit are kept" classname="io.github.kakashi812.droidoss.layout.LayoutCodecTest" time="0.048"/>
+  <testcase name="garbage decodes to defaults instead of throwing" classname="io.github.kakashi812.droidoss.layout.LayoutCodecTest" time="0.004"/>
+  <testcase name="an edited custom layout survives a round-trip" classname="io.github.kakashi812.droidoss.layout.LayoutCodecTest" time="0.013"/>
+  <testcase name="newId takes the first free customN" classname="io.github.kakashi812.droidoss.layout.LayoutCodecTest" time="0.02"/>
+  <testcase name="uniqueName numbers a clash, ignoring case" classname="io.github.kakashi812.droidoss.layout.LayoutCodecTest" time="0.011"/>
+  <testcase name="a version 1 file keeps its three slots, names and selection" classname="io.github.kakashi812.droidoss.layout.LayoutCodecTest" time="0.004"/>
+  <testcase name="an activeId pointing at nothing is coerced back to default" classname="io.github.kakashi812.droidoss.layout.LayoutCodecTest" time="0.001"/>
+  <testcase name="defaults hold no custom layouts and Default is active" classname="io.github.kakashi812.droidoss.layout.LayoutCodecTest" time="0.001"/>
+  <testcase name="duplicate ids and a stored Default are dropped" classname="io.github.kakashi812.droidoss.layout.LayoutCodecTest" time="0.003"/>
+  <testcase name="encode then decode is identity" classname="io.github.kakashi812.droidoss.layout.LayoutCodecTest" time="0.001"/>
+  <testcase name="unknown keys are ignored so a newer file still loads" classname="io.github.kakashi812.droidoss.layout.LayoutCodecTest" time="0.002"/>
+  <testcase name="a blank name is replaced" classname="io.github.kakashi812.droidoss.layout.LayoutCodecTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
