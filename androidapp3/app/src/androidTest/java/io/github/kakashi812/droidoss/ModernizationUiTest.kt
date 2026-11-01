@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.unit.dp
@@ -97,6 +98,44 @@ class ModernizationUiTest {
         compose.onNodeWithText("Controls").performClick()
         compose.onNodeWithText("A").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Control visible").assertIsOn()
+    }
+
+    @Test fun dpadThumbSlidesThroughDirectionsAndReleasesOutside() {
+        val layout = defaultLayout().copy(elements = listOf(DpadElement("dpad", .5f, .5f, .4f)))
+        compose.setContent { KizunaTheme { NarrowPhone { PadScreen(null, layout) } } }
+        val pad = compose.onNodeWithContentDescription("Directional pad")
+        fun direction(value: String) = pad.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value))
+        pad.performTouchInput { down(Offset(width * .5f, height * .17f)) }
+        direction("Up")
+        pad.performTouchInput { moveTo(Offset(width * .83f, height * .17f)) }
+        direction("Up + Right")
+        pad.performTouchInput { moveTo(Offset(width * .83f, height * .5f)) }
+        direction("Right")
+        pad.performTouchInput { moveTo(Offset(width * 1.2f, height * .5f)) }
+        direction("Released")
+        pad.performTouchInput { up() }
+        direction("Released")
+    }
+
+    @Test fun dpadEditorSavesDirectionModeAndDeadzone() {
+        var saved: ControllerLayout? = null
+        compose.setContent { KizunaTheme { NarrowPhone {
+            LayoutEditorScreen(defaultLayout().copy(id = "custom1"), onSave = { saved = it }, onCancel = {})
+        } } }
+        compose.onNodeWithText("Controls").performClick()
+        compose.onNodeWithText("D-pad").performScrollTo().performClick()
+        compose.onNodeWithText("Input").performClick()
+        compose.onNodeWithText("4-way").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Center deadzone").performScrollTo()
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(.1f) }
+        compose.onNodeWithContentDescription("Close inspector").performClick()
+        compose.onNode(hasText("Save") and hasClickAction()).performClick()
+        compose.waitUntil(5_000) { saved != null }
+        compose.runOnIdle {
+            val dpad = requireNotNull(saved).elements.filterIsInstance<DpadElement>().single()
+            assertFalse(dpad.diagonals)
+            assertEquals(.1f, dpad.deadzone, .001f)
+        }
     }
 
     private fun assertInsidePhone(node: SemanticsNodeInteraction) {
