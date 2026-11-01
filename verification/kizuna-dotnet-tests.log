@@ -1,0 +1,33 @@
+
+Welcome to .NET 10.0!
+---------------------
+SDK Version: 10.0.403
+
+Telemetry
+---------
+The .NET tools collect usage data in order to help us improve your experience. It is collected by Microsoft and shared with the community. You can opt-out of telemetry by setting the DOTNET_CLI_TELEMETRY_OPTOUT environment variable to '1' or 'true' using your favorite shell.
+
+Read more about .NET CLI Tools telemetry: https://aka.ms/dotnet-cli-telemetry
+
+----------------
+Installed an ASP.NET Core HTTPS development certificate.
+To trust the certificate, run 'dotnet dev-certs https --trust'
+Learn about HTTPS: https://aka.ms/dotnet-https
+
+----------------
+Write your first app: https://aka.ms/dotnet-hello-world
+Find out what's new: https://aka.ms/dotnet-whats-new
+Explore documentation: https://aka.ms/dotnet-docs
+Report issues and find source on GitHub: https://github.com/dotnet/core
+Use 'dotnet --help' to see available commands or visit: https://aka.ms/dotnet-cli
+--------------------------------------------------------------------------------------
+  Determining projects to restore...
+  Restored /workspace/scratch/a296f4732bfd/droidOSS/server/DroidOSS.Core/DroidOSS.Core.csproj (in 144 ms).
+  Restored /workspace/scratch/a296f4732bfd/droidOSS/server/DroidOSS.Tests/DroidOSS.Tests.csproj (in 39.72 sec).
+  DroidOSS.Core -> /workspace/scratch/a296f4732bfd/droidOSS/server/DroidOSS.Core/bin/Release/net10.0/DroidOSS.Core.dll
+  DroidOSS.Tests -> /workspace/scratch/a296f4732bfd/droidOSS/server/DroidOSS.Tests/bin/Release/net10.0/DroidOSS.Tests.dll
+Test run for /workspace/scratch/a296f4732bfd/droidOSS/server/DroidOSS.Tests/bin/Release/net10.0/DroidOSS.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+Results File: /workspace/scratch/a296f4732bfd/verification/kizuna-core.trx
+
+Passed!  - Failed:     0, Passed:   155, Skipped:     0, Total:   155, Duration: 196 ms - DroidOSS.Tests.dll (net10.0)
