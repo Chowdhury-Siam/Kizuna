@@ -23,6 +23,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
@@ -35,6 +36,9 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import io.github.kakashi812.droidoss.layout.ButtonElement
 import io.github.kakashi812.droidoss.layout.ControlElement
 import io.github.kakashi812.droidoss.layout.DpadElement
+import io.github.kakashi812.droidoss.layout.DPAD_ARM_HALF_WIDTH
+import io.github.kakashi812.droidoss.layout.DPAD_ARM_START
+import io.github.kakashi812.droidoss.layout.DPAD_ARM_END
 import io.github.kakashi812.droidoss.layout.StickMode
 import io.github.kakashi812.droidoss.layout.StickElement
 import io.github.kakashi812.droidoss.layout.TriggerElement
@@ -47,6 +51,8 @@ internal data class Placed(
 ) {
     fun contains(point: Offset, minimumRadius: Float = radius): Boolean {
         val delta = point - centre
+        if (element is DpadElement)
+            return kotlin.math.abs(delta.x) <= maxOf(radius, minimumRadius) && kotlin.math.abs(delta.y) <= maxOf(radius, minimumRadius)
         if (element is StickElement && element.mode == StickMode.TOUCHPAD)
             return kotlin.math.abs(delta.x) <= maxOf(radius, minimumRadius) && kotlin.math.abs(delta.y) <= maxOf(radius * 0.7f, minimumRadius)
         return delta.getDistanceSquared() <= maxOf(radius, minimumRadius) * maxOf(radius, minimumRadius)
@@ -61,11 +67,14 @@ internal data class Placed(
  */
 internal fun List<ControlElement>.place(widthPx: Float, heightPx: Float): List<Placed> =
     map { element ->
-        Placed(
-            element = element,
-            centre = Offset(element.x * widthPx, element.y * heightPx),
-            radius = element.size * widthPx / 2f,
-        )
+        var radius = element.size * widthPx / 2f
+        var centre = Offset(element.x * widthPx, element.y * heightPx)
+        if (element is DpadElement) {
+            // Older layouts often put the lower arrow beyond the screen edge.
+            radius = radius.coerceIn(0f, minOf(widthPx, heightPx) / 2f)
+            centre = Offset(centre.x.coerceIn(radius, widthPx - radius), centre.y.coerceIn(radius, heightPx - radius))
+        }
+        Placed(element, centre, radius)
     }
 
 /**
@@ -108,6 +117,7 @@ internal fun DrawScope.drawControl(
     knobs: Map<String, Offset>,
     labels: Map<String, TextLayoutResult>,
     foreground: Color = Color.White,
+    dpadMask: Int = 0,
 ) {
     val element = placed.element
     val isDown = pressed[element.id] == true
@@ -150,7 +160,7 @@ internal fun DrawScope.drawControl(
         // read as a third stick, which is exactly what it must never look like:
         // a D-pad promises four discrete directions and a stick promises smooth
         // travel, and the shape is the only thing telling you which you have.
-        is DpadElement -> drawDpad(placed, element, knobs[element.id] ?: Offset.Zero, alpha, ink)
+        is DpadElement -> drawDpad(placed, dpadMask, alpha, ink)
 
         is ButtonElement, is TriggerElement -> {
             drawCircle(
@@ -180,76 +190,37 @@ internal fun DrawScope.drawControl(
     }
 }
 
-/**
- * A four-armed cross whose arms light up individually.
- *
- * Each arm is highlighted from the knob offset using the same threshold the
- * touch handler uses, so what you see is exactly what is being sent — including
- * a diagonal lighting two arms at once.
- */
-internal fun DrawScope.drawDpad(
-    placed: Placed,
-    element: DpadElement,
-    knob: Offset,
-    alpha: Float,
-    ink: Color = Color(element.color),
-) {
+/** Large, separated arrow pads use the full footprint and highlight the actual output bits. */
+internal fun DrawScope.drawDpad(placed: Placed, mask: Int, alpha: Float, ink: Color) {
     val r = placed.radius
-    val arm = r * 0.62f          // length of each arm from centre
-    val thickness = r * 0.52f
-    val threshold = r * element.deadzone
-
-    val up = knob.y < -threshold
-    val down = knob.y > threshold
-    val left = knob.x < -threshold
-    val right = knob.x > threshold
-
-    fun armColour(active: Boolean) =
-        ink.copy(alpha = alpha * if (active) 0.80f else 0.15f)
-
-    // Vertical and horizontal bars, drawn as two rounded rectangles crossing at
-    // the centre. Each half is filled separately so one direction can light
-    // without the other.
-    drawRoundRect(                                  // up
-        color = armColour(up),
-        topLeft = placed.centre + Offset(-thickness / 2f, -arm),
-        size = Size(thickness, arm),
-        cornerRadius = CornerRadius(CORNER, CORNER),
+    val c = placed.centre
+    drawCircle(ink.copy(alpha = alpha * 0.05f), r, c)
+    val half = DPAD_ARM_HALF_WIDTH
+    val start = DPAD_ARM_START
+    val end = DPAD_ARM_END
+    val pads = listOf(
+        Triple(1, Offset(-half, -end), Size(half * 2, end - start)),
+        Triple(2, Offset(-half, start), Size(half * 2, end - start)),
+        Triple(4, Offset(-end, -half), Size(end - start, half * 2)),
+        Triple(8, Offset(start, -half), Size(end - start, half * 2)),
     )
-    drawRoundRect(                                  // down
-        color = armColour(down),
-        topLeft = placed.centre + Offset(-thickness / 2f, 0f),
-        size = Size(thickness, arm),
-        cornerRadius = CornerRadius(CORNER, CORNER),
-    )
-    drawRoundRect(                                  // left
-        color = armColour(left),
-        topLeft = placed.centre + Offset(-arm, -thickness / 2f),
-        size = Size(arm, thickness),
-        cornerRadius = CornerRadius(CORNER, CORNER),
-    )
-    drawRoundRect(                                  // right
-        color = armColour(right),
-        topLeft = placed.centre + Offset(0f, -thickness / 2f),
-        size = Size(arm, thickness),
-        cornerRadius = CornerRadius(CORNER, CORNER),
-    )
-
-    // Outline of the whole cross, so it reads as one control at rest.
-    drawRoundRect(
-        color = ink.copy(alpha = alpha * 0.30f),
-        topLeft = placed.centre + Offset(-thickness / 2f, -arm),
-        size = Size(thickness, arm * 2f),
-        cornerRadius = CornerRadius(CORNER, CORNER),
-        style = Stroke(width = STROKE_WIDTH),
-    )
-    drawRoundRect(
-        color = ink.copy(alpha = alpha * 0.30f),
-        topLeft = placed.centre + Offset(-arm, -thickness / 2f),
-        size = Size(arm * 2f, thickness),
-        cornerRadius = CornerRadius(CORNER, CORNER),
-        style = Stroke(width = STROKE_WIDTH),
-    )
+    for ((bit, offset, size) in pads) {
+        val active = mask and bit != 0
+        val top = c + offset * r
+        val area = Size(size.width * r, size.height * r)
+        val corner = CornerRadius(r * 0.12f)
+        drawRoundRect(ink.copy(alpha = alpha * if (active) 0.75f else 0.16f), top, area, corner)
+        drawRoundRect(ink.copy(alpha = alpha * if (active) 0.95f else 0.55f), top, area, corner, style = Stroke(STROKE_WIDTH))
+        val direction = when (bit) { 1 -> Offset(0f, -1f); 2 -> Offset(0f, 1f); 4 -> Offset(-1f, 0f); else -> Offset(1f, 0f) }
+        val middle = c + direction * (r * 0.67f)
+        val wing = Offset(-direction.y, direction.x) * (r * 0.11f)
+        val tip = middle + direction * (r * 0.09f)
+        val back = middle - direction * (r * 0.06f)
+        val arrow = (if (active) { if (ink.luminance() > 0.35f) Color.Black else Color.White } else ink).copy(alpha = alpha * 0.95f)
+        drawLine(arrow, back + wing, tip, STROKE_WIDTH)
+        drawLine(arrow, back - wing, tip, STROKE_WIDTH)
+    }
+    drawCircle(ink.copy(alpha = alpha * 0.25f), r * 0.10f, c)
 }
 
 internal const val STROKE_WIDTH = 3f
