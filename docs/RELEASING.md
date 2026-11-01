@@ -10,30 +10,48 @@ Keep `versionName` in `androidapp3/app/build.gradle.kts` and `<Version>` in `ser
 
 ## Android signing
 
-Every published stable APK must reuse the **same permanent signing key**. No CI run generates a temporary replacement key. Pull-request jobs do not receive secrets; unsigned APKs are allowed only as non-release build artifacts.
+Kizuna now uses the same **one-time automatic signing setup as Auralis**. You do not have to generate a keystore or enter four signing values manually. Setup creates a key once, stores the complete identity in the repository secret `ANDROID_SIGNING_IDENTITY`, then starts a fresh signed stable build. Every later trusted build reuses that identity.
 
-Under **Repository → Settings → Secrets and variables → Actions**, add these repository **secrets**:
+> [!IMPORTANT]
+> Already using the earlier supplied Kizuna APK? [Import its existing signing kit](#existing-installs-and-the-supplied-private-signing-kit) before generating a new identity to keep update compatibility.
 
-| Secret | Value |
-| --- | --- |
-| `ANDROID_KEYSTORE_BASE64` | Base64 encoding of the complete JKS keystore |
-| `ANDROID_STORE_PASSWORD` | Keystore password |
-| `ANDROID_KEY_ALIAS` | Signing alias, for example `kizuna` |
-| `ANDROID_KEY_PASSWORD` | Key password |
+### First-time automatic setup
 
-Use the private signing kit supplied with the local signed APK if you want CI releases to update that exact installation. The kit contains a keystore and four text files named after the secrets. Paste each file's complete contents into its matching secret. Keep this kit backed up privately; never upload it into source, Actions artifacts or GitHub Releases.
+1. Create a **fine-grained GitHub personal access token** scoped to this Kizuna repository with **Repository permissions → Secrets → Read and write**. This permission is needed only to save the signing identity; the normal build token cannot manage repository secrets. See [GitHub’s repository secret API permissions](https://docs.github.com/en/rest/actions/secrets#create-or-update-a-repository-secret).
+2. Under **Repository → Settings → Secrets and variables → Actions**, add that token as a repository **secret** named `ANDROID_SIGNING_SETUP_TOKEN`.
+3. Open **Actions → Set up Android signing → Run workflow**, choosing **main**.
+4. The workflow preserves any existing complete signing identity, or generates a new key if none exists. It saves all key credentials as one private secret and queues **Build and publish stable** on main with publishing enabled. A new run is necessary because secrets are read when a workflow is queued.
+5. After setup succeeds, you can remove `ANDROID_SIGNING_SETUP_TOKEN`. Future builds need only the saved identity; the setup token is not used for routine signing or release creation.
 
-For a new signing identity instead, run with JDK/keytool installed:
+Keep `ANDROID_SIGNING_IDENTITY` intact. Setup runs are serialized; an existing identity or complete legacy key is never deliberately regenerated or replaced. An incomplete legacy configuration is an error, not permission to generate another key. Key material is masked, kept out of caches/artifacts/source and removed from the runner after building. No key is committed or published.
+
+### Existing installs and the supplied private signing kit
+
+To update the previously supplied signed Kizuna APK, keep its original key. **A newly generated key cannot update an APK signed by a different key.** If you have not yet saved that key in GitHub, import it before running automatic setup:
 
 ```bash
-python tools/create-signing-key.py --output /a/private/path/kizuna-signing
+# Run from the project folder; both paths below are outside the repository.
+python tools/android_signing.py --import-kit ../Kizuna-private-signing-kit.zip --output ../ANDROID_SIGNING_IDENTITY
 ```
 
-The output path must be outside this repository. The command refuses existing directories. A different key cannot update installations signed by the supplied kit.
+Paste the output file's complete JSON contents into the repository secret `ANDROID_SIGNING_IDENTITY`, then run **Build and publish stable** with publishing enabled. Keep the file and kit private. The importer preserves the original keystore bytes and refuses to overwrite an output file or save it inside the repository. It does not generate a new key.
 
-For local signed builds, set `ANDROID_KEYSTORE_PATH`, `ANDROID_STORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`, then run `./gradlew assembleRelease`. Existing `local.properties` signing fields are still accepted. Without a key, local release builds remain unsigned.
+Existing four-secret setups are still supported and take priority, preserving the previous signing identity:
 
-The workflow restores the keystore to a private runner temporary file, signs during the release build, verifies the APK with `apksigner`, and removes the keystore in an `always()` cleanup step. Missing or partially configured secrets stop stable publication.
+| Legacy secret | Value |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | Base64 encoding of the complete keystore |
+| `ANDROID_STORE_PASSWORD` | Keystore password; Auralis's `ANDROID_KEYSTORE_PASSWORD` name is also accepted |
+| `ANDROID_KEY_ALIAS` | Signing alias |
+| `ANDROID_KEY_PASSWORD` | Key password |
+
+If no saved identity or legacy key is present, CI builds a release-mode **Kizuna Preview** APK named `Kizuna-vX.Y.Z-android-development.apk`. It uses a temporary development signature and the separate application ID `io.github.chowdhurysiam.kizuna.preview`; it cannot overwrite the stable app. Stable publishing is skipped until signing setup is complete. Preview updates are disabled, and subsequent Preview builds may use different temporary keys. Pull requests never receive signing secrets.
+
+### Local builds
+
+Normal local Gradle behavior is unchanged: set `ANDROID_KEYSTORE_PATH`, `ANDROID_STORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`, or use private `local.properties` signing fields, then run `./gradlew assembleRelease`. Without a key, a direct local release build remains unsigned. `tools/create-signing-key.py` remains an optional manual alternative for a new identity; do not use it to replace the key of an existing installation.
+
+The Actions helper validates the saved store, alias and private-key password with native JDK signing tools, writes private Gradle signing properties, and verifies the built APK with `apksigner`. Its temporary files are removed in an `always()` cleanup step. APK verification, matching platform checks, corresponding source, update manifests and checksums still gate stable publication.
 
 ## Stable release automation
 
