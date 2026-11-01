@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.kakashi812.droidoss.transport.UdpTransportTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-31T22:09:13.212Z" hostname="d6f1aa122dab" time="3.782">
+  <properties/>
+  <testcase name="extendedHandshakeHonorsPlayerNameAndRumbleWithoutAndroidDependencies" classname="io.github.kakashi812.droidoss.transport.UdpTransportTest" time="0.047"/>
+  <testcase name="requestedPortIsUsedAndLegacyInputEndsNeutralBeforeBye" classname="io.github.kakashi812.droidoss.transport.UdpTransportTest" time="0.224"/>
+  <testcase name="lostAcknowledgementsTriggerFreshHandshakeAndNeutralState" classname="io.github.kakashi812.droidoss.transport.UdpTransportTest" time="3.238"/>
+  <testcase name="startupFailuresAreNotReportedAsASilentServer" classname="io.github.kakashi812.droidoss.transport.UdpTransportTest" time="0.001"/>
+  <testcase name="fourPhoneTransportsConnectIndependentlyAndFifthIsRejected" classname="io.github.kakashi812.droidoss.transport.UdpTransportTest" time="0.048"/>
+  <testcase name="welcomeFromAnotherSocketCannotHijackThePhone" classname="io.github.kakashi812.droidoss.transport.UdpTransportTest" time="0.222"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
