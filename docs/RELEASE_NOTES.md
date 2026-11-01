@@ -1,3 +1,15 @@
+# Kizuna 1.0.5
+
+- Pauses touchpad camera input outside the visible pad rectangle while keeping pointer ownership until lift. Re-entry rebases the gesture and avoids a jump or unintended neighboring-button press.
+- Calculates swipe velocity from pointer event timestamps, keeping idle timing separate. Batched Android delivery no longer changes the apparent swipe speed.
+- Expands saved touchpad sensitivity from 0.25×–4× to 0.25×–16× in the editor, profile settings and import/store sanitization. Existing gain values remain unchanged. Maximum turn speed at full XInput travel remains controlled by the game's camera settings.
+- Adds five JVM regression cases and one Android edge-interaction case; existing persistence/editor tests now cover values above 4×.
+- Preserves the existing UDP/XInput protocol, four controllers, Steam, D-pad/editor improvements, signing identity, cached CI and immutable releases.
+
+See [TEST_REPORT.md](TEST_REPORT.md) for checks actually executed and pending Android/gameplay validation.
+
+---
+
 # Kizuna 1.0.4
 
 - Fixes the Android compilation error in the compact editor sliders by using the Material 3 SliderState overload for custom thumb/track content. Profile values remain synchronized after control selection, undo and reset.
