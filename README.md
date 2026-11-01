@@ -134,7 +134,7 @@ For the D-pad, choose **D-pad → Input** to select **4-way** or **8-way** and a
 
 The inspector uses slim sliders with 48 dp touch targets. Visibility is in its header; **Duplicate control** and **Reset this control** are under Arrange.
 
-For a touchpad, choose either stick → **Input → Touchpad**. Set sensitivity from **0.25× to 4×**. Relative swipes drive that stick's XInput axes; landing does not jump to an absolute direction. Holding still, lifting or cancelling releases the output. This is a gamepad-camera/movement control, not a desktop mouse protocol.
+For a touchpad, choose either stick → **Input → Touchpad**. Set sensitivity from **0.25× to 4×**. Right-stick swipes control the game camera. Relative swipe speed drives that stick's XInput axes; landing does not jump to an absolute direction. **Game deadzone compensation** raises moving output past a game's neutral threshold, starting at **28%**; adjust it from 0–60% if needed. This floor applies only during movement, so resting/lifting stays exactly neutral. Tiny finger jitter is filtered. Holding still, lifting or cancelling releases the output. This is a gamepad-camera/movement control, not a desktop mouse protocol.
 
 **Input & calibration** saves independent stick sensitivity, deadzones, response curves and center offsets, plus trigger mode/range and vibration strength. **Preview** works without a server. Accessibility actions support button holds and directional input.
 
@@ -223,6 +223,7 @@ Read [release and signing configuration](docs/RELEASING.md) before the first rel
 | No controller appears in Windows | Install ViGEmBus, restart if required, then reopen Kizuna and `joy.cpl` |
 | A legacy game ignores input | Configure Steam Input or the emulator's Xbox controller mapping |
 | Touchpad aim is too quick | Lower that stick's touchpad sensitivity; adjust the game's camera sensitivity too |
+| Touchpad does not move the camera | Set Output stick to Right, start at 1× sensitivity/28% Game deadzone compensation, and check right-stick motion in Windows diagnostics; increase compensation if the game ignores slow swipes |
 | APK update has a signing mismatch | Use the same persistent signing key as the installed Kizuna APK |
 | No stable update is found | Publish a newer successful stable release in the repository embedded at build time |
 
