@@ -77,12 +77,7 @@ fun mixInput(layout: ControllerLayout, touches: Collection<ControlTouch>): PadSt
                 if (e.stick == Stick.LEFT) { result.thumbLX = x; result.thumbLY = y }
                 else { result.thumbRX = x; result.thumbRY = y }
             }
-            is DpadElement -> {
-                result.setButton(1, touch.y < -e.deadzone || result.isPressed(1))
-                result.setButton(2, touch.y > e.deadzone || result.isPressed(2))
-                result.setButton(4, touch.x < -e.deadzone || result.isPressed(4))
-                result.setButton(8, touch.x > e.deadzone || result.isPressed(8))
-            }
+            is DpadElement -> result.buttons = result.buttons or dpadButtons(touch.x, touch.y, e.deadzone, e.diagonals)
         }
     }
     return result
