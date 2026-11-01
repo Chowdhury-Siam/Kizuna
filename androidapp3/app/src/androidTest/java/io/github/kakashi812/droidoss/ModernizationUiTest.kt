@@ -141,20 +141,30 @@ class ModernizationUiTest {
         }
     }
 
-    @Test fun touchpadPausesOutsideAndReentryDoesNotJump() {
-        val pad = StickElement("camera", .5f, .5f, .4f, stick = Stick.RIGHT, mode = StickMode.TOUCHPAD)
-        compose.setContent { KizunaTheme { NarrowPhone { PadScreen(null, defaultLayout().copy(elements = listOf(pad))) } } }
+    @Test fun touchpadContinuesAtTheEdgeWithoutTriggeringNeighborsAndReleasesOnLift() {
+        val pad = StickElement("camera", .4f, .5f, .3f, stick = Stick.RIGHT, mode = StickMode.TOUCHPAD)
+        val button = ButtonElement("neighbor", .75f, .5f, .1f, label = "Neighbor", mask = 0x1000)
+        compose.setContent { KizunaTheme { NarrowPhone { PadScreen(null, defaultLayout().copy(elements = listOf(pad, button))) } } }
         val target = compose.onNodeWithContentDescription("RIGHT touchpad")
         target.performTouchInput {
             down(center)
-            moveTo(Offset(width * .6f, height * .5f))
-            moveTo(Offset(width * 1.15f, height * .1f))
+            moveTo(Offset(width * .99f, height * .5f))
         }
-        target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Stopped"))
-        target.performTouchInput { moveTo(Offset(width * .75f, height * .5f)) }
-        target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Stopped"))
+        // Idle synchronization exceeds the interior timeout; an edge hold must remain active.
+        target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Moving"))
+        val neighbor = compose.onNodeWithContentDescription("Neighbor")
+        val bounds = target.fetchSemanticsNode().boundsInRoot
+        val neighborCenter = neighbor.fetchSemanticsNode().boundsInRoot.center
+        target.performTouchInput { moveTo(Offset(neighborCenter.x - bounds.left, neighborCenter.y - bounds.top)) }
+        target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Moving"))
+        neighbor.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Released"))
         target.performTouchInput { up() }
         target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Stopped"))
+        // Positive control: that neighbor responds normally to a separate finger after release.
+        neighbor.performTouchInput { down(center) }
+        neighbor.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Held"))
+        neighbor.performTouchInput { up() }
+        neighbor.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Released"))
     }
 
     private fun assertInsidePhone(node: SemanticsNodeInteraction) {
