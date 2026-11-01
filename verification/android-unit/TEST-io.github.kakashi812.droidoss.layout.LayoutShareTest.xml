@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.kakashi812.droidoss.layout.LayoutShareTest" tests="19" skipped="0" failures="0" errors="0" timestamp="2026-10-31T22:09:12.919Z" hostname="d6f1aa122dab" time="0.202">
+  <properties/>
+  <testcase name="file names are safe for any file system or chat app" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.014"/>
+  <testcase name="the default layout's QR code stays small enough to scan off a screen" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.004"/>
+  <testcase name="a button with a made-up mask is refused" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.005"/>
+  <testcase name="a damaged QR code is refused" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.002"/>
+  <testcase name="the file carries the format marker and version but not the sender's id" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.008"/>
+  <testcase name="an unknown control type is refused" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.003"/>
+  <testcase name="an empty layout is refused" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.001"/>
+  <testcase name="some other app's JSON is refused" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.002"/>
+  <testcase name="a blank or overlong name is fixed up" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.1"/>
+  <testcase name="a compression bomb is refused" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.027"/>
+  <testcase name="out-of-range numbers are pulled back to what the editor allows" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.004"/>
+  <testcase name="a QR code round-trips name and controls" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.002"/>
+  <testcase name="repeated control ids are refused" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.001"/>
+  <testcase name="a layout from a newer app says so" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.003"/>
+  <testcase name="surrounding whitespace is ignored" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.002"/>
+  <testcase name="oversized input is refused before parsing" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.002"/>
+  <testcase name="positions are rounded so float noise does not bloat the code" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.002"/>
+  <testcase name="a file round-trips name and controls" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.011"/>
+  <testcase name="garbage is refused, never thrown" classname="io.github.kakashi812.droidoss.layout.LayoutShareTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
