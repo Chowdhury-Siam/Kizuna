@@ -1,4 +1,39 @@
-# Kizuna 1.0.3 — validation report
+# Kizuna 1.0.4 — validation report
+
+## Uploaded CI log analysis and slider correction (2026-11-01)
+
+Source version **1.0.4**, Android code **11**. The supplied `logs_111891947003.zip` records the preceding **1.0.3** run at commit `b89e153f34820222e748a02e99fa446c10bd0f5f`. Its results are actual uploaded run evidence:
+
+| Uploaded 1.0.3 run | Result |
+| --- | --- |
+| Python suite | **23 passed**, 8.379 seconds |
+| Linux .NET suite | **155 passed**, zero failed/skipped |
+| Windows .NET suite | **155 passed**, zero failed/skipped |
+| Windows installer build | Inno Setup reported successful compilation of `Kizuna-v1.0.3-Setup.exe`; Windows artifacts uploaded |
+| Android debug/release compilation | **Failed** at `LayoutEditorScreen.kt:358`, invalid Slider overload; the other four errors cascade from that overload failure |
+| Gradle task-output cache | **34 tasks restored from cache**, 22 executed |
+| SDK restore | Nonfatal cache restore failure with 34,470 mode/timestamp permission messages from root-owned preinstalled packages |
+| Android tests / stable publication | Not reached successfully; no passing Android or stable-release result is established by these logs |
+
+The compact slider introduced in 1.0.2 incorrectly combined the legacy value-based Slider API with custom thumb/track slots. The compiler's available overload requires `SliderState` with external `onValueChange`. The correction follows AndroidX's own value-based adapter: remember `SliderState(value, 0, range)`, synchronize `state.value` from the current profile value, then call `Slider(state = ..., onValueChange = ...)`. This keeps thumb geometry compact and keeps undo/reset/control selection synchronized. The inspected upstream implementation is [AndroidX Slider.kt](https://github.com/androidx/androidx/blob/androidx-main/compose/material3/material3/src/commonMain/kotlin/androidx/compose/material3/Slider.kt); hosted compilation remains the verification gate for the pinned dependency.
+
+Both Android checkouts now prepare ownership of SDK cache parent directories and cached package trees before restoration. This is scoped to the Android SDK cache paths, including emulator components; unrelated package subdirectories are not recursively changed. SDK/emulator cache keys move to `v2` to avoid restoring the problematic archive. Existing Gradle/NuGet/AVD caching and all required checks/signature/release gates are retained.
+
+| Checks actually run on this 1.0.4 correction | Result |
+| --- | --- |
+| Local Python suite | **23 passed**, zero failures/skips, 4.472 seconds |
+| actionlint 1.7.7, both workflows | Passed |
+| Workflow shell syntax/cache ordering/release gate checks | Passed |
+| Version validator | Passed: Android/Windows **1.0.4**, Android code **11** |
+| Whitespace check | No whitespace errors |
+| Full Gradle tests/lint/release/test-APK build | Attempted; Gradle distribution download blocked with `Network is unreachable` before compilation |
+| Local SDK extraction permission replay | Blocked: this container cannot run sudo or switch to an unprivileged user; no passing extraction replay is claimed |
+| Corrected Android source, emulator tests, new hosted SDK-cache behavior | **Not verified by a hosted run yet** |
+| New 1.0.4 APK/Setup or real upgrade/gameplay | **Not built/tested** for this correction |
+
+Uploaded 1.0.3 Windows success must not be confused with a 1.0.4 build result. The failing Android source change is corrected in this ZIP, but Android build/test success cannot be claimed until CI runs. No GitHub push, secret mutation, workflow dispatch or release publication was performed.
+
+---
 
 ## Touchpad camera output correction (2026-11-01)
 
