@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.kakashi812.droidoss.protocol.PacketCodecTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-10-31T22:09:13.186Z" hostname="d6f1aa122dab" time="0.018">
+  <properties/>
+  <testcase name="discover matches the golden vector" classname="io.github.kakashi812.droidoss.protocol.PacketCodecTest" time="0.004"/>
+  <testcase name="input packet matches the golden vector" classname="io.github.kakashi812.droidoss.protocol.PacketCodecTest" time="0.001"/>
+  <testcase name="reset centres everything" classname="io.github.kakashi812.droidoss.protocol.PacketCodecTest" time="0.002"/>
+  <testcase name="multi-byte fields are little-endian" classname="io.github.kakashi812.droidoss.protocol.PacketCodecTest" time="0.0"/>
+  <testcase name="setButton leaves other buttons alone" classname="io.github.kakashi812.droidoss.protocol.PacketCodecTest" time="0.001"/>
+  <testcase name="a session welcome is not an announcement" classname="io.github.kakashi812.droidoss.protocol.PacketCodecTest" time="0.0"/>
+  <testcase name="reader rejects what is not a session message" classname="io.github.kakashi812.droidoss.protocol.PacketCodecTest" time="0.002"/>
+  <testcase name="welcome round-trips" classname="io.github.kakashi812.droidoss.protocol.PacketCodecTest" time="0.001"/>
+  <testcase name="announcement with a length that disagrees with its name is rejected" classname="io.github.kakashi812.droidoss.protocol.PacketCodecTest" time="0.0"/>
+  <testcase name="announcement golden vector decodes" classname="io.github.kakashi812.droidoss.protocol.PacketCodecTest" time="0.002"/>
+  <testcase name="session messages match the golden vectors" classname="io.github.kakashi812.droidoss.protocol.PacketCodecTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
