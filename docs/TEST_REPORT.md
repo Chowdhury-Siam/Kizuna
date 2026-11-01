@@ -1,5 +1,19 @@
 # Kizuna 1.0.0 — validation report
 
+## Gradle wrapper permission fix (2026-11-01)
+
+Both Android jobs now run `chmod +x androidapp3/gradlew` immediately after checkout. This handles ZIP/browser uploads that record the wrapper without its executable bit and prevents exit 126 before Gradle starts. Each job prepares its own checkout. APK signing, SDK setup and stable-release rules are unchanged; application version remains **1.0.0**, code **7**.
+
+Validation executed for this update:
+
+- Reproduced `Permission denied` with the actual wrapper set to mode `0644`, then ran each job's exact permission step and verified executable access was restored.
+- Both workflows passed actionlint 1.7.7.
+- All **23 existing Python tests passed**, with no failures or skips (4.713 seconds).
+- Running the actual `./gradlew --version` successfully launched the wrapper and Java, then failed to download Gradle 9.5.0 because outbound network access was unavailable. No Gradle build or emulator tests passed in this update; hosted CI still needs a new run.
+
+No app source or signing behavior changed.
+
+
 ## Automatic signing workflow update (2026-11-01)
 
 This CI-only update adopts Auralis’s retained signing flow. **23 Python tests passed** (16 signing/setup regressions plus the 7 existing protocol/release tests), with no failures or skips. Native JDK checks generated and restored PKCS12 keys, signed a probe archive, rejected incorrect store/key passwords and aliases, and verified Java Properties escaping. GitHub secret operations were mocked: tests covered preserving existing identities and legacy names, partial-secret refusal, setup event/branch/token guards, one bundled secret write, reuse on a second run, a secret appearing during setup, and redacted errors. Private-kit import preserved the test keystore bytes and refused an overwrite.
