@@ -48,6 +48,10 @@ jobs:
     needs: version
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
@@ -65,6 +69,8 @@ jobs:
   android:
     runs-on: ubuntu-latest
     needs: version
+    outputs:
+      signed: ${{ steps.signing.outputs.signed }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -78,47 +84,48 @@ jobs:
           log-accepted-android-sdk-licenses: 'false'
       - run: sdkmanager "platforms;android-37.0" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
-      - name: Restore persistent release signing key
-        if: github.event_name != 'pull_request'
+      - name: Configure automatic APK signing
+        id: signing
         env:
-          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          PUBLISH: ${{ needs.version.outputs.publish }}
-        shell: bash
-        run: |
-          if [ -n "${KEYSTORE}${STORE_PASSWORD}${KEY_ALIAS}${KEY_PASSWORD}" ]; then
-            test -n "$KEYSTORE" && test -n "$STORE_PASSWORD" && test -n "$KEY_ALIAS" && test -n "$KEY_PASSWORD"
-            umask 077
-            printf '%s' "$KEYSTORE" | base64 --decode > "$RUNNER_TEMP/release.jks"
-            printf 'ANDROID_KEYSTORE_PATH=%s\n' "$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
-          elif [ "$PUBLISH" = true ]; then
-            echo '::error::Stable APK signing requires ANDROID_KEYSTORE_BASE64, ANDROID_STORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD. See docs/RELEASING.md.'
-            exit 1
-          fi
+          SIGNING_IDENTITY: ${{ github.event_name != 'pull_request' && secrets.ANDROID_SIGNING_IDENTITY || '' }}
+          KEYSTORE: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEYSTORE_BASE64 || '' }}
+          STORE_PASSWORD: ${{ github.event_name != 'pull_request' && (secrets.ANDROID_STORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD) || '' }}
+          KEY_ALIAS: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
+          KEY_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_PASSWORD || '' }}
+        run: python3 tools/android_signing.py
       - name: Test, lint and build release
         working-directory: androidapp3
         env:
-          ANDROID_STORE_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.ANDROID_STORE_PASSWORD || '' }}
-          ANDROID_KEY_ALIAS: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_ALIAS || '' }}
-          ANDROID_KEY_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.ANDROID_KEY_PASSWORD || '' }}
+          SIGNED: ${{ steps.signing.outputs.signed }}
           RELEASE_REPOSITORY: ${{ github.repository }}
-        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleRelease "-PreleaseRepository=$RELEASE_REPOSITORY"
+        shell: bash
+        run: |
+          options=("-PreleaseRepository=$RELEASE_REPOSITORY")
+          if [ "$SIGNED" != true ]; then options+=("-PconnectionPreview=true"); fi
+          ./gradlew --no-daemon testDebugUnitTest lintDebug assembleRelease "${options[@]}"
       - name: Stage versioned APK and verify signing
         env:
           VERSION: ${{ needs.version.outputs.version }}
-          PUBLISH: ${{ needs.version.outputs.publish }}
+          SIGNED: ${{ steps.signing.outputs.signed }}
         shell: bash
         run: |
           mkdir -p dist
-          if [ -n "${ANDROID_KEYSTORE_PATH:-}" ]; then
+          if [ "$SIGNED" = true ]; then
             APK="dist/Kizuna-v$VERSION-android.apk"
-            cp androidapp3/app/build/outputs/apk/release/app-release.apk "$APK"
-            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
           else
-            test "$PUBLISH" != true
-            cp androidapp3/app/build/outputs/apk/release/app-release-unsigned.apk "dist/Kizuna-v$VERSION-android-unsigned.apk"
+            APK="dist/Kizuna-v$VERSION-android-development.apk"
+          fi
+          cp androidapp3/app/build/outputs/apk/release/app-release.apk "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
+      - name: Explain release signing
+        env:
+          SIGNED: ${{ steps.signing.outputs.signed }}
+        shell: bash
+        run: |
+          if [ "$SIGNED" = true ]; then
+            echo 'APK signed with the retained identity. Stable publishing waits for the matching checks and Windows installer.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Preview APK built with a temporary key and separate app ID. Stable publishing is skipped. Run Set up Android signing once; see docs/RELEASING.md.' >> "$GITHUB_STEP_SUMMARY"
           fi
       - uses: actions/upload-artifact@v4
         with:
@@ -135,7 +142,9 @@ jobs:
       - name: Remove signing material
         if: always()
         shell: bash
-        run: rm -f "$RUNNER_TEMP/release.jks"
+        run: |
+          rm -f androidapp3/local.properties
+          rm -rf -- "$RUNNER_TEMP/kizuna-signing"
   android-ui:
     runs-on: ubuntu-latest
     needs: android
@@ -211,7 +220,7 @@ jobs:
           name: windows-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: test-results
   release:
-    if: needs.version.outputs.publish == 'true'
+    if: needs.version.outputs.publish == 'true' && needs.android.outputs.signed == 'true'
     needs: [version, protocol, android, android-ui, windows]
     runs-on: ubuntu-latest
     permissions:
