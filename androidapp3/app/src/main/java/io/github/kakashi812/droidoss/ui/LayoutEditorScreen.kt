@@ -355,7 +355,10 @@ private fun EditorSlider(label: String, value: Float, range: ClosedFloatingPoint
     val colors = SliderDefaults.colors(activeTrackColor = MaterialTheme.colorScheme.primary,
         inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f), thumbColor = MaterialTheme.colorScheme.primary)
     Row { Text(label, Modifier.weight(1f), style = MaterialTheme.typography.labelLarge); Text(display, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary) }
-    Slider(value = value.coerceIn(range.start, range.endInclusive), onValueChange = update, valueRange = range,
+    val state = remember(range) { SliderState(value.coerceIn(range.start, range.endInclusive), 0, range) }
+    // The profile/history owns the value; synchronize after undo, reset or selecting another control.
+    state.value = value.coerceIn(range.start, range.endInclusive)
+    Slider(state = state, onValueChange = update,
         onValueChangeFinished = finished, colors = colors,
         thumb = { Box(Modifier.size(18.dp).background(MaterialTheme.colorScheme.primary, CircleShape)) },
         track = { state -> SliderDefaults.Track(sliderState = state, colors = colors, modifier = Modifier.height(4.dp),
