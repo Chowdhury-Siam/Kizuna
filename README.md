@@ -203,6 +203,8 @@ GitHub Actions runs protocol, Android JVM/lint, Android emulator UI and Windows 
 
 Like Auralis, **Actions → Set up Android signing** generates and saves the release key once, then launches a fresh signed build. It needs a repository Secrets token named `ANDROID_SIGNING_SETUP_TOKEN` for that one setup run; future builds reuse `ANDROID_SIGNING_IDENTITY` automatically. Existing signing keys are preserved. Without setup, CI produces a separately installed Preview APK and skips stable publication. If you installed the earlier supplied APK, [import its private signing kit](docs/RELEASING.md#existing-installs-and-the-supplied-private-signing-kit) to keep update compatibility.
 
+Builds reuse Gradle, NuGet, Android SDK and clean emulator caches to reduce repeat downloads and rebuilds. The first run warms the caches; every release still requires the full test suite. See [CI caching and diagnostics](docs/RELEASING.md#ci-caching-and-diagnostics).
+
 Read [release and signing configuration](docs/RELEASING.md) before the first release. Nothing in the source package pushes to the original upstream repository.
 
 ---
