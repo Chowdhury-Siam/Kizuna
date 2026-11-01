@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.github.kakashi812.droidoss.layout.TouchpadTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-10-31T22:09:13.175Z" hostname="d6f1aa122dab" time="0.008">
+  <properties/>
+  <testcase name="gainIsIndependentFromJoystickDeadzoneAndReleaseIsNeutral" classname="io.github.kakashi812.droidoss.layout.TouchpadTest" time="0.002"/>
+  <testcase name="settingsPersistInFilesQrAndStoreWithOldLayoutsStillReadable" classname="io.github.kakashi812.droidoss.layout.TouchpadTest" time="0.002"/>
+  <testcase name="landingAnywhereDoesNotMoveTheStick" classname="io.github.kakashi812.droidoss.layout.TouchpadTest" time="0.001"/>
+  <testcase name="invalidSettingsAreBoundedAndHistoryRestoresMode" classname="io.github.kakashi812.droidoss.layout.TouchpadTest" time="0.0"/>
+  <testcase name="velocityIsFrameRateIndependentAndDirectionIsXInputCompatible" classname="io.github.kakashi812.droidoss.layout.TouchpadTest" time="0.001"/>
+  <testcase name="relativeMotionStopsWhenStillAndDoesNotDependOnLandingPosition" classname="io.github.kakashi812.droidoss.layout.TouchpadTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
