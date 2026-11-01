@@ -75,25 +75,38 @@ fun LayoutEditorScreen(
         }
         Column(Modifier.fillMaxSize()) {
             Surface(color = palette.surfaceContainer, tonalElevation = 1.dp) {
-                Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    EditorIcon("‹", "Cancel editing", onClick = onCancel)
-                    Column(Modifier.weight(1f).padding(horizontal = 4.dp)) {
-                        Text(if (wide) initial.name else "Edit layout", style = MaterialTheme.typography.titleSmall,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (wide) Text("Tap to edit · Drag to move", style = MaterialTheme.typography.labelSmall, color = palette.onSurfaceVariant)
+                Column {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        EditorIcon("‹", "Cancel editing", onClick = onCancel)
+                        Column(Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                            Text(if (wide) initial.name else "Edit layout", style = MaterialTheme.typography.titleSmall,
+                                maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            if (wide) Text("Tap to edit · Drag to move", style = MaterialTheme.typography.labelSmall, color = palette.onSurfaceVariant)
+                        }
+                        if (wide) {
+                            EditorIcon("↶", "Undo", enabled = revision >= 0 && history.canUndo) { restore(history.undo(elements.toList())) }
+                            EditorIcon("↷", "Redo", enabled = history.canRedo) { restore(history.redo(elements.toList())) }
+                            TextButton(onClick = { picker = true }) { Text("Controls") }
+                        }
+                        Box {
+                            EditorIcon("⋮", "More editor actions") { menu = true }
+                            DropdownMenu(menu, { menu = false }) {
+                                DropdownMenuItem(text = { Text(if (showGrid) "Hide grid" else "Show grid") }, onClick = { showGrid = !showGrid; menu = false })
+                                DropdownMenuItem(text = { Text("Reset layout") }, onClick = { resetDialog = true; menu = false })
+                            }
+                        }
+                        Button(onClick = { onSave(initial.copy(elements = elements.toList())) }, contentPadding = PaddingValues(horizontal = 16.dp)) { Text("Save") }
                     }
-                    EditorIcon("↶", "Undo", enabled = revision >= 0 && history.canUndo) { restore(history.undo(elements.toList())) }
-                    EditorIcon("↷", "Redo", enabled = history.canRedo) { restore(history.redo(elements.toList())) }
-                    TextButton(onClick = { picker = true }) { Text("Controls") }
-                    if (!wide && selected != null) TextButton(onClick = { inspector = true }) { Text("Edit") }
-                    Box {
-                        EditorIcon("⋮", "More editor actions") { menu = true }
-                        DropdownMenu(menu, { menu = false }) {
-                            DropdownMenuItem(text = { Text(if (showGrid) "Hide grid" else "Show grid") }, onClick = { showGrid = !showGrid; menu = false })
-                            DropdownMenuItem(text = { Text("Reset layout") }, onClick = { resetDialog = true; menu = false })
+                    if (!wide) {
+                        // Keep Save reachable when the selected-control action appears on a narrow phone.
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            EditorIcon("↶", "Undo", enabled = revision >= 0 && history.canUndo) { restore(history.undo(elements.toList())) }
+                            EditorIcon("↷", "Redo", enabled = history.canRedo) { restore(history.redo(elements.toList())) }
+                            Spacer(Modifier.weight(1f))
+                            TextButton(onClick = { picker = true }) { Text("Controls") }
+                            if (selected != null) TextButton(onClick = { inspector = true }) { Text("Edit") }
                         }
                     }
-                    Button(onClick = { onSave(initial.copy(elements = elements.toList())) }, contentPadding = PaddingValues(horizontal = 16.dp)) { Text("Save") }
                 }
             }
             Row(Modifier.fillMaxSize()) {
