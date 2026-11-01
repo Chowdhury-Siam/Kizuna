@@ -42,7 +42,7 @@ fun ProfileSettingsScreen(initial: ControllerLayout, onSave: (ControllerLayout) 
                             TuneSlider("Game deadzone compensation", control.touchpadDeadzoneCompensation, 0f..0.6f) {
                                 updateControl(control.copy(touchpadDeadzoneCompensation = it))
                             }
-                            Text((if (side == Stick.RIGHT) "Swipes rotate the camera. " else "Swipes control movement. ") + "Raise sensitivity for faster swipes. Leaving the pad pauses input; lift to reposition.", style = MaterialTheme.typography.bodySmall)
+                            Text((if (side == Stick.RIGHT) "Swipes rotate the camera. " else "Swipes control movement. ") + "Swipe to an edge and hold to keep turning. Swipe inward to adjust; lift to stop. Raise sensitivity for faster response.", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     if (control?.mode != StickMode.TOUCHPAD) {
