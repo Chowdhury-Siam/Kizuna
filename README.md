@@ -55,7 +55,7 @@ Kizuna continues the droidOSS codebase with a new identity, an original mint-and
 | **Expressive Android UI** | Use compact Material 3 screens, spring motion and system/light/dark themes |
 | **Complete gamepad** | Use two sticks, D-pad, ABXY, shoulders, triggers, stick clicks, Back and Start |
 | **Editable controls** | Drag, resize, recolor, hide, duplicate, remap, align and layer controls; undo/redo or reset |
-| **Joystick or touchpad** | Turn either stick into a relative touchpad, with independent 0.25×–4× sensitivity |
+| **Joystick or touchpad** | Turn either stick into a relative touchpad, with independent 0.25×–16× sensitivity |
 | **58 game presets** | Start with eFootball, Tomb Raider, Resident Evil and Steam genre profiles |
 | **Saved profiles** | Keep 50 custom profiles alongside Default; rename, duplicate, import/export or share by QR |
 | **Input tuning** | Save sensitivity, radial deadzones, response curves, calibration, trigger travel and vibration per profile |
@@ -134,7 +134,7 @@ For the D-pad, choose **D-pad → Input** to select **4-way** or **8-way** and a
 
 The inspector uses slim sliders with 48 dp touch targets. Visibility is in its header; **Duplicate control** and **Reset this control** are under Arrange.
 
-For a touchpad, choose either stick → **Input → Touchpad**. Set sensitivity from **0.25× to 4×**. Right-stick swipes control the game camera. Relative swipe speed drives that stick's XInput axes; landing does not jump to an absolute direction. **Game deadzone compensation** raises moving output past a game's neutral threshold, starting at **28%**; adjust it from 0–60% if needed. This floor applies only during movement, so resting/lifting stays exactly neutral. Tiny finger jitter is filtered. Holding still, lifting or cancelling releases the output. This is a gamepad-camera/movement control, not a desktop mouse protocol.
+For a touchpad, choose either stick → **Input → Touchpad**. Set sensitivity from **0.25× to 16×**. Right-stick swipes control the game camera. Relative swipe speed drives that stick's XInput axes; landing does not jump to an absolute direction. Input pauses outside the rectangle; re-entry starts from a fresh anchor so crossing an edge cannot create a camera jump. Pointer capture continues until lift, preventing an off-pad swipe from pressing neighboring buttons. **Game deadzone compensation** raises moving output past a game's neutral threshold, starting at **28%**; adjust it from 0–60% if needed. This floor applies only during movement, so resting/lifting stays exactly neutral. Tiny finger jitter is filtered. Holding still, lifting or cancelling releases the output. Higher gain makes full stick travel easier to reach. Once the Windows visualizer reaches full travel, higher app gain cannot exceed the game's turn-rate limit. If the game offers controller-camera sensitivity, raise that setting for faster turns. The existing XInput gamepad protocol remains in use.
 
 **Input & calibration** saves independent stick sensitivity, deadzones, response curves and center offsets, plus trigger mode/range and vibration strength. **Preview** works without a server. Accessibility actions support button holds and directional input.
 
