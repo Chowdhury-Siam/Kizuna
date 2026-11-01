@@ -24,8 +24,8 @@ android {
         manifestPlaceholders["appLabel"] = if (connectionPreview) "Kizuna Preview" else "@string/app_name"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.0.0"
+        versionCode = 8
+        versionName = "1.0.1"
 
         val releaseRepository = providers.gradleProperty("releaseRepository").orElse("Chowdhury-Siam/Kizuna").get()
         require(Regex("[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+").matches(releaseRepository)) { "Invalid releaseRepository" }
