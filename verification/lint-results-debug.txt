@@ -1,0 +1,249 @@
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/build.gradle.kts:26: Warning: Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the android.os.Build.VERSION_CODES javadoc for details. [OldTargetApi]
+        targetSdk = 36
+        ~~~~~~~~~~~~~~
+
+   Explanation for issues of type "OldTargetApi":
+   When your application or sdk runs on a version of Android that is more
+   recent than your targetSdk specifies that it has been tested with, various
+   compatibility modes kick in. This ensures that your application continues
+   to work, but it may look out of place. For example, if the targetSdk is
+   less than 14, your app may get an option button in the UI.
+
+   To fix this issue, set the targetSdk to the highest available value. Then
+   test your app to make sure everything works correctly. You may want to
+   consult the compatibility notes to see what changes apply to each version
+   you are adding support for:
+   https://developer.android.com/reference/android/os/Build.VERSION_CODES.html
+   as well as follow this guide:
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.
+   html
+
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.html
+
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/AndroidManifest.xml:47: Warning: Redundant label can be removed [RedundantLabel]
+            android:label="${appLabel}"
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "RedundantLabel":
+   When an activity does not have a label attribute, it will use the one from
+   the application tag. Since the application has already specified the same
+   label, the label on this activity can be omitted.
+
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/gradle/libs.versions.toml:3: Warning: A newer version of androidx.core:core-ktx than 1.19.0 is available: 1.19.1 [GradleDependency]
+coreKtx = "1.19.0"
+          ~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/gradle/libs.versions.toml:7: Warning: A newer version of androidx.lifecycle:lifecycle-runtime-ktx than 2.6.1 is available: 2.10.0 [GradleDependency]
+lifecycleRuntimeKtx = "2.6.1"
+                      ~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/gradle/libs.versions.toml:8: Warning: A newer version of androidx.activity:activity-compose than 1.8.0 is available: 1.8.2 [GradleDependency]
+activityCompose = "1.8.0"
+                  ~~~~~~~
+
+   Explanation for issues of type "GradleDependency":
+   This detector looks for usages of libraries where the version you are using
+   is not the current stable release. Using older versions is fine, and there
+   are cases where you deliberately want to stick with an older version.
+   However, you may simply not be aware that a more recent version is
+   available, and that is what this lint check helps find.
+
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/gradle/libs.versions.toml:9: Warning: A newer version of org.jetbrains.kotlin.plugin.serialization than 2.2.10 is available: 2.4.21 [NewerVersionAvailable]
+kotlin = "2.2.10"
+         ~~~~~~~~
+
+   Explanation for issues of type "NewerVersionAvailable":
+   This detector checks with a central repository to see if there are newer
+   versions available for the dependencies used by this project. This is
+   similar to the GradleDependency check, which checks for newer versions
+   available in the Android SDK tools and libraries, but this works with any
+   MavenCentral dependency, and connects to the library every time, which
+   makes it more flexible but also much slower.
+
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/java/io/github/kakashi812/droidoss/ui/ConnectScreen.kt:99: Warning: Modifier parameter should be the first optional parameter [ModifierParameter from androidx.compose.ui]
+    modifier: Modifier = Modifier,
+    ~~~~~~~~
+
+   Explanation for issues of type "ModifierParameter":
+   The first (or only) Modifier parameter in a Composable function should
+   follow the following rules:
+   - Be named modifier
+   - Have a type of Modifier
+   - Either have no default value, or have a default value of Modifier
+   - If optional, be the first optional parameter in the parameter list
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.ui
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/AndroidManifest.xml:95: Warning: Fixed screen orientations will be ignored in most cases, starting from Android 16. Android is moving toward a model where apps are expected to adapt to various orientations, display sizes, and aspect ratios. [DiscouragedApi]
+            android:screenOrientation="fullSensor"
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "DiscouragedApi":
+   Discouraged APIs are allowed and are not deprecated, but they may be unfit
+   for common use (e.g. due to slow performance or subtle behavior).
+
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/java/io/github/kakashi812/droidoss/ui/ConnectScreen.kt:102: Hint: Prefer mutableIntStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    var slot by remember { mutableStateOf(initialSlot) }
+                           ~~~~~~~~~~~~~~
+
+   Explanation for issues of type "AutoboxingStateCreation":
+   Calling mutableStateOf<T>() when T is either backed by a primitive type on
+   the JVM or is a value class results in a state implementation that requires
+   all state values to be boxed. This usually causes an additional allocation
+   for each state write, and adds some additional work to auto-unbox values
+   when reading the value of the state. Instead, prefer to use a specialized
+   primitive state implementation for Int, Long, Float, and Double when the
+   state does not need to track null values and does not override the default
+   SnapshotMutationPolicy. See mutableIntStateOf(), mutableLongStateOf(),
+   mutableFloatStateOf(), and mutableDoubleStateOf() for more information.
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.runtime
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/res/values/colors.xml:3: Warning: The resource R.color.purple_200 appears to be unused [UnusedResources]
+    <color name="purple_200">#FFBB86FC</color>
+           ~~~~~~~~~~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/res/values/colors.xml:4: Warning: The resource R.color.purple_500 appears to be unused [UnusedResources]
+    <color name="purple_500">#FF6200EE</color>
+           ~~~~~~~~~~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/res/values/colors.xml:5: Warning: The resource R.color.purple_700 appears to be unused [UnusedResources]
+    <color name="purple_700">#FF3700B3</color>
+           ~~~~~~~~~~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/res/values/colors.xml:6: Warning: The resource R.color.teal_200 appears to be unused [UnusedResources]
+    <color name="teal_200">#FF03DAC5</color>
+           ~~~~~~~~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/res/values/colors.xml:7: Warning: The resource R.color.teal_700 appears to be unused [UnusedResources]
+    <color name="teal_700">#FF018786</color>
+           ~~~~~~~~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/res/values/colors.xml:8: Warning: The resource R.color.black appears to be unused [UnusedResources]
+    <color name="black">#FF000000</color>
+           ~~~~~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/res/values/colors.xml:9: Warning: The resource R.color.white appears to be unused [UnusedResources]
+    <color name="white">#FFFFFFFF</color>
+           ~~~~~~~~~~~~
+
+   Explanation for issues of type "UnusedResources":
+   Unused resources make applications larger and slow down builds.
+
+
+   The unused resource check can ignore tests. If you want to include
+   resources that are only referenced from tests, consider packaging them in a
+   test source set instead.
+
+   You can include test sources in the unused resource check by setting the
+   system property lint.unused-resources.include-tests=true, and to exclude
+   them (usually for performance reasons), use
+   lint.unused-resources.exclude-tests=true.
+
+   Available options:
+
+   **skip-libraries** (default is true):
+   Whether the unused resource check should skip reporting unused resources in libraries.
+
+   Many libraries will declare resources that are part of the library surface; other modules depending on the library will also reference the resources. To avoid reporting all these resources as unused (in the context of a library), the unused resource check normally skips reporting unused resources in libraries. Instead, run the unused resource check on the consuming app module (along with `checkDependencies=true`).
+
+   However, there are cases where you want to check that all the resources declared in a library are used; in that case, you can disable the skip option.
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UnusedResources">
+           <option name="skip-libraries" value="true" />
+       </issue>
+   </lint>
+   ```
+
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/res/mipmap-hdpi/ic_launcher_round.webp: Warning: The following unrelated icon files have identical contents: ic_launcher.webp, ic_launcher_round.webp [IconDuplicates]
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/res/mipmap-mdpi/ic_launcher_round.webp: Warning: The following unrelated icon files have identical contents: ic_launcher.webp, ic_launcher_round.webp [IconDuplicates]
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/res/mipmap-xhdpi/ic_launcher_round.webp: Warning: The following unrelated icon files have identical contents: ic_launcher.webp, ic_launcher_round.webp [IconDuplicates]
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.webp: Warning: The following unrelated icon files have identical contents: ic_launcher.webp, ic_launcher_round.webp [IconDuplicates]
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp: Warning: The following unrelated icon files have identical contents: ic_launcher.webp, ic_launcher_round.webp [IconDuplicates]
+
+   Explanation for issues of type "IconDuplicates":
+   If an icon is repeated under different names, you can consolidate and just
+   use one of the icons and delete the others to make your application
+   smaller. However, duplicated icons usually are not intentional and can
+   sometimes point to icons that were accidentally overwritten or accidentally
+   not updated.
+
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/java/io/github/kakashi812/droidoss/MainActivity.kt:90: Warning: Use the KTX extension function String.toUri instead? [UseKtx]
+            installPermission.launch(Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:$packageName")))
+                                                                                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/java/io/github/kakashi812/droidoss/Settings.kt:27: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        set(value) = prefs.edit().putString(KEY_HOST, value.trim()).apply()
+                     ~~~~~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/java/io/github/kakashi812/droidoss/Settings.kt:31: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        set(value) = prefs.edit().putString("deviceName", value.trim().take(32)).apply()
+                     ~~~~~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/java/io/github/kakashi812/droidoss/Settings.kt:34: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        set(value) = prefs.edit().putInt("preferredSlot", value.coerceIn(-1, 3)).apply()
+                     ~~~~~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/java/io/github/kakashi812/droidoss/Settings.kt:37: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        set(value) = prefs.edit().putString("theme", value).apply()
+                     ~~~~~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/java/io/github/kakashi812/droidoss/Settings.kt:41: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        set(value) = prefs.edit().putBoolean("automaticUpdates", value).apply()
+                     ~~~~~~~~~~~~
+/workspace/scratch/a296f4732bfd/droidOSS/androidapp3/app/src/main/java/io/github/kakashi812/droidoss/Settings.kt:44: Warning: Use the KTX extension function SharedPreferences.edit instead? [UseKtx]
+        set(value) = prefs.edit().putLong("lastUpdateCheck", value).apply()
+                     ~~~~~~~~~~~~
+
+   Explanation for issues of type "UseKtx":
+   The Android KTX libraries decorates the Android platform SDK as well as
+   various libraries with more convenient extension functions available from
+   Kotlin, allowing you to use default parameters, named parameters, and
+   more.
+
+   Available options:
+
+   **remove-defaults** (default is true):
+   Whether to skip arguments that match the defaults provided by the extension.
+
+   Extensions often provide default values for some of the parameters. For example:
+   ```kotlin
+   fun Path.readLines(charset: Charset = Charsets.UTF_8): List<String> { return Files.readAllLines(this, charset) }
+   ```
+   This lint check will by default automatically omit parameters that match the default, so if your code was calling
+
+   ```kotlin
+   Files.readAllLines(file, Charset.UTF_8)
+   ```
+   lint would replace this with
+   ```kotlin
+   file.readLines()
+   ```
+   rather than
+
+   ```kotlin
+   file.readLines(Charset.UTF_8
+   ```
+   You can turn this behavior off using this option.
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UseKtx">
+           <option name="remove-defaults" value="true" />
+       </issue>
+   </lint>
+   ```
+
+   **require-present** (default is true):
+   Whether to only offer extensions already available.
+
+   This option lets you only have lint suggest extension replacements if those extensions are already available on the class path (in other words, you're already depending on the library containing the extension method.)
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UseKtx">
+           <option name="require-present" value="true" />
+       </issue>
+   </lint>
+   ```
+
+0 errors, 27 warnings, 1 hint
