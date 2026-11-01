@@ -1,6 +1,7 @@
 package io.github.kakashi812.droidoss.transport
 
 import org.junit.Assert.*
+import io.github.kakashi812.droidoss.layout.*
 import org.junit.Test
 import java.net.*
 import java.nio.ByteBuffer
@@ -85,6 +86,30 @@ class UdpTransportTest {
                 val final = peer.bye.poll(2, TimeUnit.SECONDS)
                 assertNotNull("BYE must follow a neutral input packet", final)
                 assertTrue(final!!.sliceArray(8..19).all { it.toInt() == 0 })
+            } finally { transport.stop() }
+        }
+    }
+
+    @Test fun touchpadCameraMotionReachesRightStickOnTheWireAndStopsNeutral() {
+        Peer(legacy = true).use { peer ->
+            val connected = CountDownLatch(1)
+            val transport = UdpTransport("127.0.0.1", peer.port, onStateChange = { if (it is ConnectionState.Connected) connected.countDown() })
+            val stick = defaultLayout().elements.filterIsInstance<StickElement>().first { it.stick == Stick.RIGHT }.copy(mode = StickMode.TOUCHPAD)
+            val layout = defaultLayout().copy(elements = listOf(stick))
+            val motion = TouchpadMotion(.3f, .1f, 0)
+            try {
+                transport.start(); assertTrue(connected.await(3, TimeUnit.SECONDS))
+                motion.move(.32f, .1f, 16_000_000)
+                val input = mixInput(layout, listOf(motion.sample(stick.id, 16_000_000)))
+                transport.update { thumbRX = input.thumbRX; thumbRY = input.thumbRY }
+                val packet = peer.inputMatching { ByteBuffer.wrap(it).order(ByteOrder.LITTLE_ENDIAN).getShort(16) > 8689 }
+                assertEquals(0.toShort(), ByteBuffer.wrap(packet).order(ByteOrder.LITTLE_ENDIAN).getShort(12))
+                assertEquals(0.toShort(), ByteBuffer.wrap(packet).order(ByteOrder.LITTLE_ENDIAN).getShort(18))
+                val stopped = mixInput(layout, listOf(motion.sample(stick.id, 76_000_000)))
+                transport.update { thumbRX = stopped.thumbRX; thumbRY = stopped.thumbRY }
+                peer.inputMatching { it.sliceArray(12..19).all { b -> b.toInt() == 0 } }
+                transport.stop()
+                assertTrue(peer.bye.poll(2, TimeUnit.SECONDS)!!.sliceArray(8..19).all { it.toInt() == 0 })
             } finally { transport.stop() }
         }
     }
