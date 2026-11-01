@@ -10,7 +10,7 @@ Automated results are supplied separately in TEST_REPORT.md. This checklist desc
 - Export/import through file and QR, including a version 1 layout. Confirm mappings, color, visibility, game title and input settings round-trip.
 - Check both sticks at centre, deadzone boundary, gentle diagonal and rim; tune curves/sensitivity/offsets. Check analog trigger 0/128/255, digital trigger 255 and release to zero.
 - Hold two controls mapped to A and release one; the other must stay held. Test at least six simultaneous touches, slide-off, navigation interrupts and backgrounding.
-- Switch each stick between Joystick and Touchpad. Confirm no jump on contact, correct swipe direction, steady output at different frame rates, stop on idle/lift/cancel, independent sensitivity from 0.25× to 16×, and save/QR/file migration. Inspect the compact editor with large fonts in portrait and landscape; every control must remain visible in the preview.
+- Switch each stick between Joystick and Touchpad. Confirm no jump on contact, correct swipe direction, steady output at different frame rates, stop on interior idle/lift/cancel, continued edge turning while held, independent sensitivity from 0.25× to 16×, and save/QR/file migration. Inspect the compact editor with large fonts in portrait and landscape; every control must remain visible in the preview.
 - Confirm vibration strength at zero and full, local haptics and game rumble.
 
 ## Connection regression (0.3.2)
@@ -71,11 +71,13 @@ Automated results are supplied separately in TEST_REPORT.md. This checklist desc
 - [ ] Hold left-stick movement and a trigger while swiping the right touchpad; verify all inputs together and repeat with four connected controllers.
 - [ ] Export/import JSON and QR, relaunch, and switch profiles; confirm sensitivity/compensation persist and the joystick mode remains unchanged.
 
-## Touchpad edges and high gain (1.0.5)
+## Touchpad edge continuation and stronger sensitivity (1.0.6)
 
-- [ ] In Tomb Raider (2013), start at 8× touchpad sensitivity and tune within 0.25×–16×. Keep the existing compensation unless the game ignores slow swipes. Once RX/RY reaches full travel, adjust controller-camera sensitivity in the game if that option is available; the game may impose its own turn-rate limit.
-- [ ] Swipe horizontally/vertically/diagonally just inside all four edges, including the top-right corner. Verify no unexpected reversal or extra direction.
-- [ ] Keep a finger down, slide beyond each edge/corner, and verify immediate neutral output. Continue moving outside: no camera input or neighboring button press. Re-enter: no jump; the next inside movement resumes normally.
-- [ ] Test a larger and smaller pad, landscape and floating-window mode, slow and fast swipes, and multiple refresh rates.
-- [ ] Hold left-stick movement and a trigger while crossing the right pad's edges; ensure independent multitouch and neutral release.
-- [ ] Save 12×/16×, relaunch, export/import JSON and QR, and switch profiles; confirm high gain is retained. Old profiles keep their original gain.
+- [ ] In Tomb Raider (2013), use Right touchpad, 28% compensation, and compare 1×, 2× and 4× with the same slow swipe. Slow intentional movements must register; the 0.25×–16× value must survive save/restart/JSON/QR.
+- [ ] Touch down at each edge/corner without moving. There must be no camera movement until swiping.
+- [ ] Swipe to all four edges and four corners. Hold still for at least two seconds, then continue outside the rectangle: the camera must keep turning in the swipe direction without an unexpected reversal or new axis from small jitter.
+- [ ] Swipe inward while still outside/at the edge. The direction must respond immediately without lifting; returning to the interior and holding still must return to neutral. Lift, cancel, leave the screen or switch profile during an edge hold: verify neutral output and no stuck turn.
+- [ ] Cross over nearby face buttons with the same captured finger: they must not activate. Press a neighboring button with a separate finger to confirm independent input.
+- [ ] Hold left-stick movement and a trigger while turning at the right touchpad edge. Repeat with four connected phones and check release/disconnect neutral state.
+- [ ] In Windows diagnostics, a 0.02-radius / 16 ms horizontal swipe at 4× should reach full right-stick travel; no axis may exceed ±32767. At full output, the game's own controller-camera speed remains the ceiling.
+- [ ] Test 60/120 Hz input and delayed delivery. Interior aiming must be smooth, edge holds stable, and fast reversals responsive.
