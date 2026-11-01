@@ -186,7 +186,7 @@ fun PadScreen(transport: UdpTransport?, layout: ControllerLayout, modifier: Modi
                             .filter { mask and it.first != 0 }.joinToString(" + ") { it.second }.ifEmpty { "Released" }
                     } else if (p.element is StickElement && p.element.mode == StickMode.TOUCHPAD) {
                         if ((touches.values + accessible.values).any { it.id == p.element.id && (it.x != 0f || it.y != 0f) }) "Moving" else "Stopped"
-                    } else if (accessible.containsKey(p.element.id)) "Held" else "Released"
+                    } else if (touches.values.any { it.id == p.element.id } || accessible.containsKey(p.element.id)) "Held" else "Released"
                     fun toggle(x: Float, y: Float): Boolean {
                         val next = ControlTouch(p.element.id, x, y)
                         if (accessible[p.element.id] == next) accessible.remove(p.element.id)
