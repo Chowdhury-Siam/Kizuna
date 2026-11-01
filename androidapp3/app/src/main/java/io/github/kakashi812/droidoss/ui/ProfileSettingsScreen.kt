@@ -38,11 +38,11 @@ fun ProfileSettingsScreen(initial: ControllerLayout, onSave: (ControllerLayout) 
                         fun updateControl(value: StickElement) { profile = profile.copy(elements = profile.elements.map { if (it.id == control.id) value else it }) }
                         StickModeSelector(control, onChange = ::updateControl)
                         if (control.mode == StickMode.TOUCHPAD) {
-                            TuneSlider("Touchpad sensitivity", control.touchpadSensitivity, 0.25f..4f) { updateControl(control.copy(touchpadSensitivity = it)) }
+                            TuneSlider("Touchpad sensitivity", control.touchpadSensitivity, 0.25f..MAX_TOUCHPAD_SENSITIVITY) { updateControl(control.copy(touchpadSensitivity = it)) }
                             TuneSlider("Game deadzone compensation", control.touchpadDeadzoneCompensation, 0f..0.6f) {
                                 updateControl(control.copy(touchpadDeadzoneCompensation = it))
                             }
-                            Text((if (side == Stick.RIGHT) "Swipes rotate the camera. " else "Swipes control movement. ") + "Raise compensation if slow swipes do nothing. Lift or hold still to stop.", style = MaterialTheme.typography.bodySmall)
+                            Text((if (side == Stick.RIGHT) "Swipes rotate the camera. " else "Swipes control movement. ") + "Raise sensitivity for faster swipes. Leaving the pad pauses input; lift to reposition.", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     if (control?.mode != StickMode.TOUCHPAD) {
