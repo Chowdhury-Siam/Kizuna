@@ -106,6 +106,8 @@ data class DpadElement(
 
     /** Fraction of the way from centre to edge before a direction registers. */
     val deadzone: Float = 0.25f,
+    /** Disable diagonals for games that require four distinct directions. */
+    val diagonals: Boolean = true,
 ) : ControlElement
 
 /** Any button that maps to a single bit of the button mask. */
@@ -216,7 +218,7 @@ fun defaultLayout(): ControllerLayout = ControllerLayout(
         // ── left thumb ───────────────────────────────────────────────────
         StickElement(id = "stick_left", x = 0.14f, y = 0.55f, size = 0.17f,
             stick = Stick.LEFT),
-        DpadElement(id = "dpad", x = 0.32f, y = 0.82f, size = 0.17f),
+        DpadElement(id = "dpad", x = 0.32f, y = 0.76f, size = 0.20f),
 
         // Stick clicks. These are buttons 9 and 10 in joy.cpl, and without them
         // a great many games lose sprint, crouch or melee entirely. Small and
