@@ -1,3 +1,23 @@
+# Kizuna 1.0.9 — validation report
+
+## Editor animation overload fix (2026-11-18)
+
+Shared version **1.0.9**, Android code **16**.
+
+The supplied hosted build log for the previous source reached both debug/release Kotlin compilation, then failed at LayoutEditorScreen.kt:183. Kotlin resolved the unqualified animation name to ColumnScope.AnimatedVisibility even though the immediate DSL receiver was BoxWithConstraintsScope. The correction removes the unqualified import and calls `androidx.compose.animation.AnimatedVisibility(...)` directly, selecting the top-level overload. Animation parameters, preview bounds, panel opacity, settings and PlayStation code are retained.
+
+| Evidence / validation | Result |
+| --- | --- |
+| User-supplied previous hosted build | Debug and release Kotlin compilation failed on the animation overload; tests and release build did not complete |
+| Shared version validator | Passed: **1.0.9**, Android code **16** |
+| Focused source/archive comparison | Only the animation import/call/comment, app version metadata and release/test notes changed |
+| Local Android Kotlin compilation | Blocked before compilation by the Gradle distribution download; no claim of a passing build |
+| Hardware/gameplay | Not repeated for this source-only compiler fix |
+
+The srcDir deprecation and native-symbol stripping messages in the supplied log are warnings, separate from the reported compilation failure. Historical reports below are not evidence that 1.0.9 builds successfully.
+
+---
+
 # Kizuna 1.0.8 — validation report
 
 ## PlayStation output and button labels (2026-11-18)
