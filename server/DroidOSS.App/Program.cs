@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using DroidOSS.Core;
 using System.Windows;
 using DroidOSS.App.Ui;
 
@@ -28,7 +29,7 @@ internal static class Program
         if (console)
         {
             AttachOrAllocateConsole();
-            return ConsoleMode.RunAsync(demo).GetAwaiter().GetResult();
+            return ConsoleMode.RunAsync(demo, HasFlag(args, "--playstation") ? VirtualControllerType.PlayStation4 : VirtualControllerType.Xbox360).GetAwaiter().GetResult();
         }
 
         var app = new Application { ShutdownMode = ShutdownMode.OnMainWindowClose };
