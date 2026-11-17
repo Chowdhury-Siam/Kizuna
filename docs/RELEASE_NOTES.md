@@ -1,3 +1,24 @@
+# Kizuna 1.0.8
+
+- Adds selectable virtual PlayStation 4 (DualShock 4) output alongside Xbox 360 in the Windows dashboard, saved across restarts. Switching types is available when no phones are connected; four player slots remain supported.
+- Adds saved Xbox/PlayStation button labels on Android, including matching editor, control picker, remapping and accessibility names. Windows live input previews also show the chosen symbols.
+- Converts buttons, all D-pad combinations, signed stick axes and analog triggers into native DS4 reports. Neutral reports release the hat/buttons/triggers and center sticks before disconnecting. The existing UDP packet format and game-specific profile settings remain intact.
+- Adds `--playstation` to console/demo modes, a remappable PS/Guide action, converter regression tests and button-label/input preservation tests.
+- Version 1.0.8; Android code 15. Actual Windows driver/game compatibility and motor feedback still require device testing; no native DualSense or PS touch/gyro emulation is claimed.
+
+---
+
+# Kizuna 1.0.7
+
+- Opens the game profile control inspector from the top center with a short slide/fade animation on both wide and narrow screens.
+- Uses a rounded, translucent panel without background dimming. The preview keeps its bounds and exposed controls remain selectable and draggable while editing.
+- Keeps the toolbar and Save accessible. Close and Android Back dismiss the inspector; all existing Style, Input and Arrange settings remain available.
+- Gives all 58 built-in templates explicit per-title stick, D-pad, trigger, vibration and touchpad response defaults. Football analog triggers retain partial and full travel; camera curves retain full stick range.
+- Keeps centre offsets neutral. Store version 3 upgrades unmodified old preset settings once, retains customized tuning and geometry, and adds Use game defaults in Input & calibration.
+- Android version code 14; shared release version 1.0.7.
+
+---
+
 # Kizuna 1.0.6
 
 - Restores touchpad input at and beyond its edges. Swiping outward into the edge band continues turning in the swipe direction while held; inward movement responds without lifting, and lift/cancellation releases the stick. Landing alone at an edge stays neutral.
