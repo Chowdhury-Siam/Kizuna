@@ -1,3 +1,62 @@
+# Kizuna 1.0.8 — validation report
+
+## PlayStation output and button labels (2026-11-18)
+
+Shared release version **1.0.8**, Android code **15**.
+
+Windows can create four virtual Xbox 360 or DualShock 4 pads using the pinned ViGEm SDK. The dashboard remembers the selection, prevents switching while players are connected, awaits server shutdown, releases the old backend and restarts with the new type. Console/demo support `--playstation` explicitly. Xbox remains the default.
+
+`DualShock4Report` converts the existing wire state without changing the protocol: face-button positions, shoulders, stick clicks, Share/Options and PS, all 16 D-pad combinations (opposites cancel per axis), 8-bit trigger travel and signed-to-unsigned stick axes with Y inversion. Neutral maps to hat 8, axes 128 and released buttons/triggers. Backend disconnect explicitly submits neutral before disposing a device.
+
+Android saves its button style globally, displays PS symbols/names throughout the pad/editor and keeps original profile data intact. Selecting phone labels is independent of Windows output; the app explains where to choose the Windows controller type. Four-player/session behavior, prior top inspector and the 58 per-game defaults remain available.
+
+| Validation executed | Result |
+| --- | --- |
+| Existing Python protocol/signing/release tests | **23 passed**, 4.080 seconds; validates existing tooling/protocol only |
+| Shared version check | Passed: **1.0.8**, Android code **15** |
+| Windows XAML/project XML parse and source whitespace/delimiter audit | Passed; delimiter checks do not replace compilation |
+| Independent axis conversion arithmetic audit | All 65,536 signed axis values remain within 0–255, with neutral at 128; this is not execution of C# code |
+| Android compilation/JVM tests | Blocked before compilation: Gradle distribution download returned `Network is unreachable` |
+| C# converter tests | Not run: .NET SDK is not installed in this environment |
+| Added regression sources | C# neutral, positional buttons, all D-pad combinations, axes/trigger/PS and release cases; Kotlin button labels, input bits and serialization preservation |
+| Windows native DS4/Xbox, Steam/game prompts, four phones, motor feedback | **Not run**; requires Windows with ViGEmBus and device/game validation |
+| APK / Windows installer | **Not built** in this task |
+
+The pinned SDK's DS4 feedback event is deprecated and documented upstream as potentially unreliable; motor vibration is best-effort until verified on Windows. There is no native PS touch-surface/click, motion sensor or DualSense adaptive-trigger generation. A game/Steam Input can still display Xbox prompts according to its own support/configuration.
+
+API references checked against the upstream SDK: [controller interface](https://github.com/nefarius/ViGEm.NET/blob/master/ViGEmClient/Targets/IDualShock4Controller.cs), [DS4 button properties](https://github.com/nefarius/ViGEm.NET/blob/master/ViGEmClient/Targets/DualShock4/DualShock4Properties.cs), and [feedback arguments](https://github.com/nefarius/ViGEm.NET/blob/master/ViGEmClient/Targets/DualShock4/DualShock4FeedbackReceivedEventArgs.cs).
+
+Earlier reports below describe earlier versions only.
+
+---
+
+# Kizuna 1.0.7 — validation report
+
+## Top inspector and game-specific defaults (2026-11-18)
+
+Android version code **14**, shared Android/Windows release version **1.0.7**.
+
+The layout inspector is now a rounded 78%-opaque overlay at the preview's top center. Its slide/fade transition is clipped below the toolbar, preview geometry remains unchanged when opening, and exposed controls retain their existing tap/drag handlers. The panel's header/tabs stay visible while its settings scroll. Close, Android Back and tapping empty preview space dismiss it. The toolbar and Save remain outside the overlay.
+
+All **58** presets now use explicit per-title defaults. They include stick deadzones/curves, trigger mode/travel, vibration, D-pad mode/deadzone, and touchpad gain/compensation. Joystick gain stays at 1 so fine curves do not cap maximum travel. Centre offsets stay at zero unless the user calibrates the device. These are suggested app-side starting values based on control styles, not measured optimal game calibrations. See GAME_PRESETS.md for the table and publisher references.
+
+Store format version **3** applies old factory-setting upgrades only while loading a version 1/2 store. Each input block is upgraded only if it exactly matches the former preset values; edited input or centre calibration preserves that block. Stock D-pad and touchpad settings are handled independently; geometry, mappings, visibility, modes, names and active ids remain intact. Current-version profiles are not automatically retuned. Use game defaults explicitly reapplies the recognized title's defaults.
+
+| Validation performed | Result |
+| --- | --- |
+| Existing Python protocol/release/signing suite | **23 passed**, 3.751 seconds; does not validate Android UI or Kotlin changes |
+| Shared version validator | Passed: **1.0.7**, Android code **14** |
+| Source data audit | 58 unique per-title input blocks; valid ranges; analog trigger endpoints reach full travel |
+| Changed source whitespace review | Passed |
+| Gradle compileDebugKotlin / lintDebug | Blocked before compilation: Gradle 9.5.0 distribution download failed with `Network is unreachable` |
+| Kotlin regression sources | Added full-range/neutral/trigger behavior, within-series response, one-time migration and customization preservation, and explicit defaults reset cases; **not compiled or executed locally** |
+| Android emulator/device UI and gameplay | **Not run**; no claim that all game defaults are empirically optimal |
+| APK / Windows installer | **Not built** in this task; full source is provided for the existing CI builds |
+
+Earlier results below describe older versions only.
+
+---
+
 # Kizuna 1.0.6 — validation report
 
 ## Touchpad edge continuation and stronger gain (2026-11-01)
