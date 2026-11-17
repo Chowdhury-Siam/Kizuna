@@ -1,4 +1,5 @@
 using System.IO;
+using DroidOSS.Core;
 using System.Text.Json;
 
 namespace DroidOSS.App.Ui;
@@ -18,6 +19,8 @@ internal sealed class ServerSettings
 
     public bool DeveloperMode { get; set; }
 
+    public VirtualControllerType ControllerType { get; set; } = VirtualControllerType.Xbox360;
+
     private static string FilePath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "droidOSS", "server.json");
 
@@ -25,7 +28,9 @@ internal sealed class ServerSettings
     {
         try
         {
-            return JsonSerializer.Deserialize<ServerSettings>(File.ReadAllText(FilePath)) ?? new();
+            var settings = JsonSerializer.Deserialize<ServerSettings>(File.ReadAllText(FilePath)) ?? new();
+            if (!Enum.IsDefined(settings.ControllerType)) settings.ControllerType = VirtualControllerType.Xbox360;
+            return settings;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
         {
