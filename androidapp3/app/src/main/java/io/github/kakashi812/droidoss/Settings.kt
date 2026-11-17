@@ -36,6 +36,10 @@ class Settings(context: Context) {
         get() = prefs.getString("theme", "System").orEmpty()
         set(value) = prefs.edit().putString("theme", value).apply()
 
+    var playStationButtons: Boolean
+        get() = prefs.getBoolean("playStationButtons", false)
+        set(value) = prefs.edit().putBoolean("playStationButtons", value).apply()
+
     var automaticUpdates: Boolean
         get() = prefs.getBoolean("automaticUpdates", true)
         set(value) = prefs.edit().putBoolean("automaticUpdates", value).apply()
