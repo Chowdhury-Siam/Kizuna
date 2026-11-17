@@ -1,7 +1,13 @@
 package io.github.kakashi812.droidoss.ui
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.spring
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,11 +16,13 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -33,7 +41,7 @@ import io.github.kakashi812.droidoss.protocol.GamepadButton
 import java.util.UUID
 import kotlin.math.roundToInt
 
-/** An unobstructed, aspect-correct preview beside a compact inspector. */
+/** An aspect-correct preview with a translucent inspector sliding down over its top edge. */
 @Composable
 fun LayoutEditorScreen(
     initial: ControllerLayout,
@@ -64,7 +72,12 @@ fun LayoutEditorScreen(
         block()
     }
     val selected = elements.firstOrNull { it.id == selectedId }
+    val controllerButtons = LocalControllerButtons.current
     val palette = MaterialTheme.colorScheme
+    BackHandler(enabled = inspector && !picker && !resetDialog) {
+        sliderEditing = false
+        inspector = false
+    }
     BoxWithConstraints(modifier.fillMaxSize().background(palette.background)) {
         val aspect = maxWidth.value / maxHeight.value.coerceAtLeast(1f)
         val wide = maxWidth >= 600.dp
@@ -109,9 +122,11 @@ fun LayoutEditorScreen(
                     }
                 }
             }
-            Row(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(1f).fillMaxHeight().background(palette.surfaceContainerLowest), contentAlignment = Alignment.Center) {
-                    // Letterboxing preserves the live pad's proportions; editor chrome never covers a control.
+            BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
+                val panelWidth = minOf(360.dp, if (wide) maxWidth * 0.44f else maxWidth - 16.dp)
+                val panelHeight = minOf(360.dp, maxHeight * 0.72f)
+                Box(Modifier.fillMaxSize().background(palette.surfaceContainerLowest), contentAlignment = Alignment.Center) {
+                    // The preview keeps the same bounds when the inspector opens or closes.
                     BoxWithConstraints(Modifier.aspectRatio(aspect)) {
                         val w = constraints.maxWidth.toFloat()
                         val h = constraints.maxHeight.toFloat()
@@ -164,10 +179,15 @@ fun LayoutEditorScreen(
                         }
                     }
                 }
-                if (wide && inspector && selected != null) {
-                    VerticalDivider()
-                    Inspector(selected, tab, { tab = it }, { sliderEditing = false; inspector = false },
-                        Modifier.width(264.dp).fillMaxHeight(),
+                // No scrim or modal window: exposed controls remain selectable and draggable.
+                AnimatedVisibility(
+                    visible = inspector && selected != null,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(vertical = 6.dp).width(panelWidth),
+                    enter = slideInVertically(tween(220)) { -it } + fadeIn(tween(180)),
+                    exit = slideOutVertically(tween(180)) { -it } + fadeOut(tween(140)),
+                ) {
+                    if (selected != null) Inspector(selected, tab, { tab = it }, { sliderEditing = false; inspector = false },
+                        Modifier.fillMaxWidth().height(panelHeight).semantics { contentDescription = "Control inspector" },
                         change = { edit -> action { change(selected.id, edit) } },
                         slider = { edit -> sliderChange { change(selected.id, edit) } },
                         finished = { sliderEditing = false },
@@ -187,30 +207,14 @@ fun LayoutEditorScreen(
                 }
             }
         }
-        if (!wide && inspector && selected != null) {
-            // Compact phones use one bounded dialog instead of squeezing the preview into a strip.
-            AlertDialog(onDismissRequest = { inspector = false }, confirmButton = {}, text = {
-                Inspector(selected, tab, { tab = it }, { sliderEditing = false; inspector = false }, Modifier.fillMaxWidth().heightIn(max = 400.dp),
-                    change = { edit -> action { change(selected.id, edit) } },
-                    slider = { edit -> sliderChange { change(selected.id, edit) } }, finished = { sliderEditing = false },
-                    resize = { value -> sliderChange { change(selected.id) { positioned(it, size = value) } } },
-                    move = { x, y -> sliderChange { change(selected.id) { positioned(it, x ?: it.x, y ?: it.y) } } },
-                    align = { x, y -> action { change(selected.id) { positioned(it, x ?: it.x, y ?: it.y) } } },
-                    layer = { front -> action { elements.remove(selected); if (front) elements.add(selected) else elements.add(0, selected) } },
-                    duplicate = { action { val copy = positioned(selected.with(id = UUID.randomUUID().toString().take(32)), x = selected.x + 0.04f); elements.add(copy); selectedId = copy.id } },
-                    canDuplicate = elements.size < LayoutShare.MAX_ELEMENTS,
-                    reset = { action { change(selected.id) { original -> initial.elements.firstOrNull { it.id == original.id } ?: original.with(size = 0.1f, opacity = 0.85f, hidden = false) } } },
-                )
-            })
-        }
     }
     if (picker) AlertDialog(onDismissRequest = { picker = false }, title = { Text("Choose a control") }, confirmButton = {
         TextButton(onClick = { picker = false }) { Text("Close") }
     }, text = {
         Column(Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState())) {
             elements.forEachIndexed { index, e ->
-                val name = controlName(e)
-                val ordinal = elements.take(index).count { controlName(it) == name } + 1
+                val name = controlName(e, controllerButtons)
+                val ordinal = elements.take(index).count { controlName(it, controllerButtons) == name } + 1
                 ListItem(headlineContent = { Text(if (ordinal > 1) "$name · $ordinal" else name) },
                     supportingContent = { Text(if (e.hidden) "Hidden" else controlKind(e)) },
                     trailingContent = { RadioButton(selected = e.id == selectedId, onClick = null) },
@@ -233,18 +237,25 @@ private fun Inspector(
     resize: (Float) -> Unit, move: (Float?, Float?) -> Unit, align: (Float?, Float?) -> Unit,
     layer: (Boolean) -> Unit, duplicate: () -> Unit, canDuplicate: Boolean, reset: () -> Unit,
 ) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier) {
+    val controllerButtons = LocalControllerButtons.current
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.78f),
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
+        modifier = modifier,
+    ) {
         Column {
             Row(Modifier.fillMaxWidth().padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(controlName(selected), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
+                    Text(controlName(selected, controllerButtons), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Switch(checked = !selected.hidden, onCheckedChange = { visible -> change { it.with(hidden = !visible) } },
                     modifier = Modifier.semantics { contentDescription = "Control visible" })
                 EditorIcon("×", "Close inspector", onClick = close)
             }
-            PrimaryTabRow(selectedTabIndex = tab) {
+            PrimaryTabRow(selectedTabIndex = tab, containerColor = Color.Transparent) {
                 listOf("Style", "Input", "Arrange").forEachIndexed { index, name ->
                     Tab(selected = tab == index, onClick = { finished(); onTab(index) }, text = { Text(name, style = MaterialTheme.typography.labelMedium) })
                 }
@@ -284,9 +295,9 @@ private fun Inspector(
                             var mapping by remember(selected.id) { mutableStateOf(false) }
                             Text("Button action", style = MaterialTheme.typography.labelLarge)
                             Box {
-                                OutlinedButton(onClick = { mapping = true }, modifier = Modifier.fillMaxWidth()) { Text(buttonMappings.firstOrNull { it.second == selected.mask }?.first ?: selected.label) }
+                                OutlinedButton(onClick = { mapping = true }, modifier = Modifier.fillMaxWidth()) { Text(controllerButtons.label(selected.mask, buttonMappings.firstOrNull { it.second == selected.mask }?.first ?: selected.label)) }
                                 DropdownMenu(mapping, { mapping = false }) {
-                                    buttonMappings.forEach { (label, mask) -> DropdownMenuItem(text = { Text(label) }, onClick = { change { (it as ButtonElement).copy(mask = mask, label = label) }; mapping = false }) }
+                                    buttonMappings.forEach { (label, mask) -> DropdownMenuItem(text = { Text(controllerButtons.label(mask, label)) }, onClick = { change { (it as ButtonElement).copy(mask = mask, label = label) }; mapping = false }) }
                                 }
                             }
                         }
@@ -366,11 +377,11 @@ private fun EditorSlider(label: String, value: Float, range: ClosedFloatingPoint
         modifier = Modifier.fillMaxWidth().height(48.dp).semantics { contentDescription = label })
 }
 
-internal fun controlName(e: ControlElement): String = when (e) {
+internal fun controlName(e: ControlElement, controllerButtons: ControllerButtons = ControllerButtons.XBOX): String = when (e) {
     is StickElement -> if (e.stick == Stick.LEFT) "Left stick" else "Right stick"
     is DpadElement -> "D-pad"
-    is TriggerElement -> if (e.trigger == Trigger.LEFT) "Left trigger" else "Right trigger"
-    is ButtonElement -> when (e.mask) { 0x10 -> "Start"; 0x20 -> "Back"; 0x40 -> "Left stick click"; 0x80 -> "Right stick click"; 0x100 -> "Left shoulder"; 0x200 -> "Right shoulder"; else -> e.label }
+    is TriggerElement -> if (controllerButtons == ControllerButtons.PLAYSTATION) controllerButtons.label(e)!! else if (e.trigger == Trigger.LEFT) "Left trigger" else "Right trigger"
+    is ButtonElement -> if (controllerButtons == ControllerButtons.PLAYSTATION) controllerButtons.label(e, spoken = true)!! else when (e.mask) { 0x10 -> "Start"; 0x20 -> "Back"; 0x40 -> "Left stick click"; 0x80 -> "Right stick click"; 0x100 -> "Left shoulder"; 0x200 -> "Right shoulder"; else -> e.label }
 }
 private fun controlKind(e: ControlElement): String = when (e) {
     is StickElement -> if (e.mode == StickMode.TOUCHPAD) "Relative touchpad" else "Analog joystick"
@@ -383,6 +394,6 @@ internal val buttonMappings = listOf(
     "A" to GamepadButton.A, "B" to GamepadButton.B, "X" to GamepadButton.X, "Y" to GamepadButton.Y,
     "LB" to GamepadButton.LEFT_SHOULDER, "RB" to GamepadButton.RIGHT_SHOULDER,
     "L3" to GamepadButton.LEFT_THUMB, "R3" to GamepadButton.RIGHT_THUMB,
-    "Start" to GamepadButton.START, "Back" to GamepadButton.BACK, "Guide" to GamepadButton.GUIDE,
+    "Start" to GamepadButton.START, "Back" to GamepadButton.BACK, "Guide" to GamepadButton.GUIDE, "Guide" to GamepadButton.GUIDE,
     "Up" to 1, "Down" to 2, "Left" to 4, "Right" to 8,
 )
