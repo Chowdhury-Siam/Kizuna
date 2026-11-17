@@ -17,6 +17,7 @@ import io.github.kakashi812.droidoss.layout.*
 @Composable
 fun ProfileSettingsScreen(initial: ControllerLayout, onSave: (ControllerLayout) -> Unit, onCancel: () -> Unit) {
     var profile by remember(initial) { mutableStateOf(initial) }
+    val gamePreset = GamePresets.forGame(profile.game)
     val context = LocalContext.current
     val focus = LocalFocusManager.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -24,7 +25,8 @@ fun ProfileSettingsScreen(initial: ControllerLayout, onSave: (ControllerLayout) 
         OutlinedTextField(profile.game, { profile = profile.copy(game = it.take(80)) }, label = { Text("Game / Steam title") }, modifier = Modifier.fillMaxWidth(),
             singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }))
-        Text("Steam receives a standard Xbox 360 controller. These settings change this profile's input.", style = MaterialTheme.typography.bodySmall)
+        Text("Choose Xbox 360 or PlayStation 4 output on the Windows dashboard. These settings change this profile's input.", style = MaterialTheme.typography.bodySmall)
+        gamePreset?.let { Text(it.defaults.summary, style = MaterialTheme.typography.bodySmall) }
         listOf(Stick.LEFT, Stick.RIGHT).forEach { side ->
             val s = if (side == Stick.LEFT) profile.input.left else profile.input.right
             fun update(value: StickSettings) {
@@ -68,7 +70,9 @@ fun ProfileSettingsScreen(initial: ControllerLayout, onSave: (ControllerLayout) 
         TextButton(onClick = { vibrate(context, profile.input.vibration) }) { Text("Test vibration") }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = onCancel) { Text("Cancel") }
-            TextButton(onClick = { profile = profile.copy(input = InputSettings()) }) { Text("Reset input") }
+            TextButton(onClick = {
+                profile = gamePreset?.defaults?.applyTo(profile) ?: profile.copy(input = InputSettings())
+            }) { Text(if (gamePreset != null) "Use game defaults" else "Reset input") }
             Button(onClick = { onSave(profile.copy(input = profile.input.sanitized())) }) { Text("Save profile") }
         }
     }
