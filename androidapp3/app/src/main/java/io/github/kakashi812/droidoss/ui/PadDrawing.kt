@@ -85,16 +85,13 @@ internal fun List<ControlElement>.place(widthPx: Float, heightPx: Float): List<P
  */
 @Composable
 internal fun rememberControlLabels(placed: List<Placed>): Map<String, TextLayoutResult> {
+    val controllerButtons = LocalControllerButtons.current
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
-    return remember(placed, textMeasurer, density) {
+    return remember(placed, textMeasurer, density, controllerButtons) {
         buildMap {
             for (p in placed) {
-                val text = when (val e = p.element) {
-                    is ButtonElement -> e.label
-                    is TriggerElement -> e.label
-                    else -> null
-                } ?: continue
+                val text = controllerButtons.label(p.element) ?: continue
 
                 put(
                     p.element.id,
