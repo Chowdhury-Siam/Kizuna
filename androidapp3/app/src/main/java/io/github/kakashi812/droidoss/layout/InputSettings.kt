@@ -84,13 +84,8 @@ fun mixInput(layout: ControllerLayout, touches: Collection<ControlTouch>): PadSt
 }
 
 fun steamPreset(name: String): ControllerLayout {
-    val base = defaultLayout().copy(name = "Steam · $name", game = name)
-    return when (name) {
-        "Racing" -> base.copy(input = InputSettings(analogTriggers = true, left = StickSettings(curve = 1.4f)))
-        "Shooter" -> base.copy(input = InputSettings(right = StickSettings(sensitivity = 0.85f, curve = 1.6f)))
-        "Platformer" -> base.copy(elements = base.elements.map { if (it is DpadElement) it.copy(size = 0.20f) else it })
-        else -> base
-    }
+    return GamePresets.find("steam-${name.lowercase(java.util.Locale.ROOT)}")?.layout()
+        ?: defaultLayout().copy(name = "Steam · $name", game = name)
 }
 
 
