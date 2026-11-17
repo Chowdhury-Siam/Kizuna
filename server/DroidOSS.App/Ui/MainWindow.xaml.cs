@@ -50,6 +50,8 @@ internal partial class MainWindow : Window
     private AvailableUpdate? _updateAvailable;
     private string? _updatePath;
     private bool _updateBusy;
+    private bool _switchingController;
+    private bool _closing;
 
     private ViGEmPadBackend? _backend;
     private ServerHost? _host;
@@ -69,6 +71,7 @@ internal partial class MainWindow : Window
         _dark = _settings.ThemeMode == "System" ? Theme.IsDark() : _settings.ThemeMode == "Dark";
         Theme.Apply(Resources, _dark);
         ThemeButton.Content = $"Theme: {_settings.ThemeMode}";
+        UpdateControllerLabel();
 
         _vm.DeveloperMode = _settings.DeveloperMode;
         _vm.PropertyChanged += OnViewModelChanged;
@@ -102,7 +105,7 @@ internal partial class MainWindow : Window
         {
             try
             {
-                _backend = new ViGEmPadBackend();
+                _backend = new ViGEmPadBackend(_settings.ControllerType);
                 _backend.RumbleReceived += OnRumble;
             }
             catch (PadDriverUnavailableException ex)
@@ -156,6 +159,7 @@ internal partial class MainWindow : Window
 
     private void OnClosing(object? sender, CancelEventArgs e)
     {
+        _closing = true;
         _timer.Stop();
         _updateCts.Cancel();
         _cts?.Cancel();
@@ -199,6 +203,7 @@ internal partial class MainWindow : Window
             slot.Update(match, now);
         }
         _vm.ConnectedCount = snapshot.Count;
+        ControllerButton.IsEnabled = snapshot.Count == 0 && !_switchingController;
 
         // Dropped-packet counters: once a second is plenty.
         if (DateTime.UtcNow - _lastCountersCheck < TimeSpan.FromSeconds(1)) return;
@@ -336,6 +341,48 @@ internal partial class MainWindow : Window
         catch (OperationCanceledException) when (_updateCts.IsCancellationRequested) { }
         catch (Exception ex) { _updatePath = null; UpdateAction.Content = "Retry download"; UpdateStatus.Text = $"Update failed: {ex.Message}"; }
         finally { _updateBusy = false; UpdateAction.IsEnabled = true; CheckUpdateButton.IsEnabled = true; UpdateProgress.Visibility = Visibility.Collapsed; }
+    }
+
+    private void UpdateControllerLabel()
+    {
+        ControllerButton.Content = _settings.ControllerType == VirtualControllerType.PlayStation4
+            ? "Controller: PlayStation 4" : "Controller: Xbox 360";
+        foreach (var slot in _vm.Slots) slot.PlayStation = _settings.ControllerType == VirtualControllerType.PlayStation4;
+    }
+
+    private async void Controller_Click(object sender, RoutedEventArgs e)
+    {
+        if (_switchingController || _closing || (_host?.Sessions.Snapshot().Count ?? 0) != 0) return;
+        _switchingController = true;
+        ControllerButton.IsEnabled = false;
+        _timer.Stop();
+        _cts?.Cancel();
+        try
+        {
+            if (_run is not null)
+                try { await _run; } catch (Exception ex) { _vm.AddLog($"Stopped previous server: {ex.GetBaseException().Message}"); }
+            if (_closing) return;
+            _host?.Dispose();
+            _host = null;
+            _backend?.Dispose();
+            _backend = null;
+            _run = null;
+            _settings.ControllerType = _settings.ControllerType == VirtualControllerType.Xbox360
+                ? VirtualControllerType.PlayStation4 : VirtualControllerType.Xbox360;
+            _settings.Save();
+            UpdateControllerLabel();
+            StartServer();
+        }
+        catch (Exception ex)
+        {
+            _vm.ErrorDetails = $"Could not change controller type: {ex.Message}";
+            _vm.Screen = Screen.ServerError;
+        }
+        finally
+        {
+            _switchingController = false;
+            if (!_closing) ControllerButton.IsEnabled = (_host?.Sessions.Snapshot().Count ?? 0) == 0;
+        }
     }
 
     private void Theme_Click(object sender, RoutedEventArgs e)
