@@ -1,5 +1,7 @@
 # Kizuna UDP protocol
 
+The wire format continues to use the same Xbox-position button bits and signed stick axes for compatibility. Windows converts those snapshots into native DualShock 4 reports when PlayStation output is selected; phone button labels do not change packet values.
+
 Kizuna retains the droidOSS version 1 protocol described below without wire-format changes.
 
 **Version 1** · UDP · little-endian
