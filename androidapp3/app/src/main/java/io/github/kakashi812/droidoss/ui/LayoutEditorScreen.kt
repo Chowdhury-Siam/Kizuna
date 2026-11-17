@@ -1,7 +1,6 @@
 package io.github.kakashi812.droidoss.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -180,7 +179,8 @@ fun LayoutEditorScreen(
                     }
                 }
                 // No scrim or modal window: exposed controls remain selectable and draggable.
-                AnimatedVisibility(
+                // Qualify the top-level overload: an enclosing ColumnScope otherwise shadows it.
+                androidx.compose.animation.AnimatedVisibility(
                     visible = inspector && selected != null,
                     modifier = Modifier.align(Alignment.TopCenter).padding(vertical = 6.dp).width(panelWidth),
                     enter = slideInVertically(tween(220)) { -it } + fadeIn(tween(180)),
