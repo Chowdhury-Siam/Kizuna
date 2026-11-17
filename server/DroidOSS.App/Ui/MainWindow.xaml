@@ -142,7 +142,7 @@
                     <!-- Developer mode: what the phone is actually sending. -->
                     <StackPanel x:Name="Dev" Grid.Row="2" Margin="0,12,0,0" Visibility="Collapsed">
                         <Border Height="1" Background="{DynamicResource Border}" Margin="0,0,0,10" />
-                        <ui:InputPreview State="{Binding State}" AutomationProperties.Name="Live controller input visualizer" />
+                        <ui:InputPreview State="{Binding State}" PlayStation="{Binding PlayStation}" AutomationProperties.Name="Live controller input visualizer" />
                         <TextBlock Text="{Binding Diagnostic}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11" Margin="0,6,0,0" />
                         <TextBlock Text="{Binding RateText}" FontSize="12" Margin="0,8,0,0"
                                    FontFamily="Cascadia Mono, Consolas" Style="{StaticResource Muted}" />
@@ -221,7 +221,7 @@
                     <Image Source="/Assets/kizuna.png" Width="48" Height="48" Margin="0,0,12,0" AutomationProperties.Name="Kizuna logo" />
                     <StackPanel>
                     <TextBlock Text="Kizuna" FontSize="28" FontWeight="Bold" />
-                    <TextBlock Text="Controller dashboard · UDP / XInput · four players" Style="{StaticResource Muted}" />
+                    <TextBlock Text="Controller dashboard · Xbox / PlayStation · four players" Style="{StaticResource Muted}" />
                     </StackPanel>
                 </StackPanel>
             </DockPanel>
@@ -231,6 +231,7 @@
                 <StackPanel>
                     <WrapPanel Margin="0,0,0,10">
                         <Button x:Name="ThemeButton" Content="Theme: System" Style="{StaticResource QuietButton}" Click="Theme_Click" Margin="0,0,8,0" />
+                        <Button x:Name="ControllerButton" Content="Controller: Xbox 360" Style="{StaticResource QuietButton}" Click="Controller_Click" Margin="0,0,8,0" ToolTip="Disconnect phones before changing the controller type. Set matching button labels in the phone app." />
                         <Button Content="Gamepad diagnostics" Style="{StaticResource QuietButton}" Click="Diagnostics_Click" Margin="0,0,8,0" />
                         <Button Content="Steam Big Picture" Style="{StaticResource AccentButton}" Click="Steam_Click" />
                     </WrapPanel>
