@@ -32,7 +32,7 @@ fun GamePresetDialog(onChoose: (String) -> Unit, onDismiss: () -> Unit) {
                     items(matches, key = { it.id }) { preset ->
                         Column(Modifier.fillMaxWidth().clickable { onChoose(preset.id) }.padding(vertical = 10.dp)) {
                             Text(preset.title, style = MaterialTheme.typography.titleSmall)
-                            Text(preset.tuning.summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                            Text(preset.defaults.summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                             if (preset.note.isNotEmpty()) Text(preset.note, style = MaterialTheme.typography.bodySmall)
                         }
                         HorizontalDivider()
