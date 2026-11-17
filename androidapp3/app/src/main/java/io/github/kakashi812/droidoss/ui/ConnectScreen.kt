@@ -95,6 +95,8 @@ fun ConnectScreen(
     onDeviceName: (String) -> Unit,
     onSlot: (Int) -> Unit,
     onTheme: (String) -> Unit,
+    playStationButtons: Boolean = false,
+    onControllerButtons: (Boolean) -> Unit = {},
     updateContent: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -142,6 +144,12 @@ fun ConnectScreen(
                 FilterChip(selected = themeMode == mode, onClick = { onTheme(mode) }, label = { Text(mode) })
             }
         }
+        Text("Controller buttons", style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = !playStationButtons, onClick = { onControllerButtons(false) }, label = { Text("Xbox") })
+            FilterChip(selected = playStationButtons, onClick = { onControllerButtons(true) }, label = { Text("PlayStation") })
+        }
+        Text("For a PS4 controller in games, also choose PlayStation 4 on the Windows dashboard.", style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(deviceName, { deviceName = it.take(32); onDeviceName(deviceName) },
             label = { Text("Device name") }, singleLine = true, enabled = canEdit, modifier = Modifier.fillMaxWidth())
         Text("Preferred player · occupied slots are never displaced", style = MaterialTheme.typography.labelLarge)
