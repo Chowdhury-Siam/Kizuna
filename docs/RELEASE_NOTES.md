@@ -1,3 +1,11 @@
+# Kizuna 1.0.9
+
+- Fixes the Android editor compile error by explicitly calling the top-level AnimatedVisibility overload. The enclosing ColumnScope previously shadowed it from inside BoxWithConstraints.
+- Keeps the translucent top inspector and its slide/fade animation, all 58 game-specific defaults, and Xbox/PlayStation output and button options.
+- Shared version 1.0.9; Android code 16.
+
+---
+
 # Kizuna 1.0.8
 
 - Adds selectable virtual PlayStation 4 (DualShock 4) output alongside Xbox 360 in the Windows dashboard, saved across restarts. Switching types is available when no phones are connected; four player slots remain supported.
