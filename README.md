@@ -42,11 +42,23 @@ Play over your local network, build a layout for each game, and connect up to fo
 
 ## ✨ Meet Kizuna
 
-Kizuna turns your Android phone into a virtual Xbox 360 controller on Windows. Your touches travel over UDP to the existing ViGEmBus backend. Windows games and Steam receive standard XInput controls.
+Kizuna turns your Android phone into a virtual **Xbox 360 or PlayStation 4 (DualShock 4) controller** on Windows. Your touches travel over UDP to the existing ViGEmBus backend. Choose the controller type on the Windows dashboard and matching Xbox or PlayStation buttons in the phone app.
 
 Kizuna continues the droidOSS codebase with a new identity, an original mint-and-coral logo, and the same compatible 20-byte input protocol. It retains device discovery, four-player sessions, Steam functionality, rumble, console mode and existing layout imports. Original authorship and GPL notices remain in the source.
 
 ---
+
+## PlayStation controller
+
+1. Disconnect any phones, then click **Controller: Xbox 360** on the Windows dashboard to switch to **Controller: PlayStation 4**. The server restarts in the selected mode and remembers it for next time. All connected player slots use the selected type.
+2. In the phone app, choose **Controller buttons → PlayStation**, then connect. The live pad, previews, editor, control picker, remapping menu and accessibility names use PlayStation labels. This button-display setting is saved on the phone and does not rewrite profile mappings or calibration.
+3. Select the virtual **Wireless Controller / DualShock 4** in a game that supports it. For games with only Xbox support, use Xbox output or configure Steam Input. The game's own support and Steam Input configuration determine its on-screen prompts.
+
+Position-based mappings are **A → Cross (×), B → Circle (○), X → Square (□), Y → Triangle (△), LB/RB → L1/R1, LT/RT → L2/R2, Back → Share, Start → Options**, with both stick clicks and the D-pad retained. Remap a control to **PS** in the editor's Input tab to send the PS button. The Xbox and PlayStation styles share existing per-game settings and the same layouts.
+
+The output is a virtual PS4 controller, not a physical-controller pairing feature or a native PS5 DualSense device. Analog triggers, both sticks, standard buttons and best-effort motor vibration are supported. Native PS touch-surface coordinates/click, gyro, lightbar control and adaptive triggers are not generated. Kizuna's camera touchpad continues to drive the selected stick.
+
+Headless use: `Kizuna.exe --console --playstation`; direct driver demo: `Kizuna.exe --demo --playstation`. Omitting `--playstation` keeps console/demo Xbox output. The dashboard's selection is independent of these command-line overrides.
 
 ## 💎 Features
 
@@ -83,7 +95,7 @@ Windows packages bundle .NET.
 ### Required Windows driver: ViGEmBus
 
 > [!IMPORTANT]
-> **ViGEmBus must be installed on the Windows PC for Kizuna to create virtual Xbox controllers.** Neither the Kizuna Setup EXE nor the portable ZIP installs this driver automatically.
+> **ViGEmBus must be installed on the Windows PC for Kizuna to create virtual Xbox or PlayStation controllers.** Neither the Kizuna Setup EXE nor the portable ZIP installs this driver automatically.
 
 1. Open the [official ViGEmBus download page](https://github.com/nefarius/ViGEmBus/releases/latest) and download its Windows installer.
 2. Run that installer **on your Windows PC** and approve the administrator prompt.
@@ -128,7 +140,7 @@ See [the preset guide](docs/GAME_PRESETS.md) for control behavior and compatibil
 
 Create or duplicate a custom profile, then choose **Edit**. The compact toolbar keeps **Controls**, undo/redo, reset and Save available above the preview. Select a control to open **Style**, **Input** or **Arrange** in the inspector.
 
-Move controls in the preview; change size, opacity, color, visibility, mappings and layering in the inspector. Hidden controls remain in the control picker. Gesture changes form single undo steps, and saving writes the profile atomically. Cancel leaves the saved version intact.
+Move controls in the preview; tap a control to slide its translucent inspector down from the top center. The preview stays in place, with exposed controls still selectable and draggable. Use Close or Android Back to dismiss the inspector. Change size, opacity, color, visibility, mappings and layering in its tabs. Hidden controls remain in the control picker. Gesture changes form single undo steps, and saving writes the profile atomically. All 58 built-in templates carry title-specific input defaults; existing untouched factory tuning is upgraded once, while customized settings stay saved. **Input & calibration → Use game defaults** applies the current title's defaults. See [Game presets](docs/GAME_PRESETS.md) for exact values and control-scheme notes. Cancel leaves the saved version intact.
 
 For the D-pad, choose **D-pad → Input** to select **4-way** or **8-way** and adjust the **Center deadzone**. The larger arrow faces snap to one direction; in 8-way mode, the gaps accept diagonals. You can slide between directions, return to the center, or slide off to release. Existing profiles keep their stored size and position; the pad is fitted inside the screen while playing. New layouts start with a larger D-pad. **Size** remains adjustable under Style.
 
