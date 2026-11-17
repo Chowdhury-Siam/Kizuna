@@ -20,15 +20,15 @@ internal static class ConsoleMode
     /// <summary>The pad <c>--demo</c> drives. Real sessions are assigned slots by the server.</summary>
     private const int DemoSlot = 0;
 
-    public static async Task<int> RunAsync(bool demo)
+    public static async Task<int> RunAsync(bool demo, VirtualControllerType controllerType = VirtualControllerType.Xbox360)
     {
-        Console.WriteLine("Kizuna server");
+        Console.WriteLine($"Kizuna server · {(controllerType == VirtualControllerType.PlayStation4 ? "PlayStation 4" : "Xbox 360")}");
         Console.WriteLine();
 
         ViGEmPadBackend backend;
         try
         {
-            backend = new ViGEmPadBackend();
+            backend = new ViGEmPadBackend(controllerType);
         }
         catch (PadDriverUnavailableException ex)
         {
