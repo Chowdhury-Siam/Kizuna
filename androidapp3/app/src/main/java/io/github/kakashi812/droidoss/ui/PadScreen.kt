@@ -98,6 +98,7 @@ fun PadScreen(transport: UdpTransport?, layout: ControllerLayout, modifier: Modi
             }
         }.toMap()
         val labels = rememberControlLabels(placed)
+        val controllerButtons = LocalControllerButtons.current
         val ink = MaterialTheme.colorScheme.onBackground
         val visualScale = placed.associate { p ->
             val scale by animateFloatAsState(if (p.element !is DpadElement && (pressed[p.element.id] == true || accessible.containsKey(p.element.id))) 0.93f else 1f,
@@ -167,12 +168,12 @@ fun PadScreen(transport: UdpTransport?, layout: ControllerLayout, modifier: Modi
         // Separate semantic bounds preserve simultaneous raw touch handling.
         placed.filter { it.element.enabled }.forEach { p ->
             val name = when (val e = p.element) {
-                is ButtonElement -> when (e.mask) {
+                is ButtonElement -> if (controllerButtons == ControllerButtons.PLAYSTATION) controllerButtons.label(e, spoken = true)!! else when (e.mask) {
                     0x10 -> "Start"; 0x20 -> "Back"; 0x40 -> "Left stick click"; 0x80 -> "Right stick click"
                     0x100 -> "Left shoulder"; 0x200 -> "Right shoulder"; 0x400 -> "Guide"
                     else -> e.label
                 }
-                is TriggerElement -> e.label
+                is TriggerElement -> controllerButtons.label(e)!!
                 is StickElement -> "${e.stick} ${if (e.mode == StickMode.TOUCHPAD) "touchpad" else "stick"}"
                 is DpadElement -> "Directional pad"
             }
