@@ -67,7 +67,7 @@ class LayoutCodecTest {
                 custom("custom3", "Custom 3"),
                 activeId = "custom2",
             ),
-        ).replace("\"version\": 2", "\"version\": 1")
+        ).replace("\"version\": ${LayoutStoreData.CURRENT_VERSION}", "\"version\": 1")
 
         val restored = LayoutCodec.decode(v1)
 
