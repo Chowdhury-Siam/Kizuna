@@ -4,33 +4,24 @@ using Nefarius.ViGEm.Client.Targets;
 
 namespace DroidOSS.ViGEm;
 
-/// <summary>
-/// An <see cref="IPadBackend"/> built on the ViGEmBus virtual bus driver.
-/// </summary>
-/// <remarks>
-/// This is the only class in the project that knows ViGEm exists. If the driver
-/// is ever replaced, this file is what gets rewritten — everything else talks to
-/// <see cref="IPadBackend"/> and is unaffected.
-/// </remarks>
+/// <summary>Four virtual Xbox 360 or DualShock 4 pads, backed by the existing ViGEmBus driver.</summary>
 public sealed class ViGEmPadBackend : IPadBackend
 {
     private readonly ViGEmClient _client;
-    private readonly IXbox360Controller?[] _pads = new IXbox360Controller?[IPadBackend.MaxPads];
+    private readonly VirtualControllerType _controllerType;
+    private readonly IXbox360Controller?[] _xboxPads = new IXbox360Controller?[IPadBackend.MaxPads];
+    private readonly IDualShock4Controller?[] _psPads = new IDualShock4Controller?[IPadBackend.MaxPads];
     private bool _disposed;
 
     public event EventHandler<RumbleEventArgs>? RumbleReceived;
 
-    /// <summary>Opens a connection to the driver.</summary>
-    /// <exception cref="PadDriverUnavailableException">The driver is missing or unreachable.</exception>
-    public ViGEmPadBackend()
+    public ViGEmPadBackend(VirtualControllerType controllerType = VirtualControllerType.Xbox360)
     {
-        try
-        {
-            _client = new ViGEmClient();
-        }
+        if (!Enum.IsDefined(controllerType)) throw new ArgumentOutOfRangeException(nameof(controllerType));
+        _controllerType = controllerType;
+        try { _client = new ViGEmClient(); }
         catch (Exception ex)
         {
-            // The client constructor is where a missing driver first shows up.
             throw new PadDriverUnavailableException(
                 "Could not connect to the ViGEmBus driver. It is probably not installed.", ex);
         }
@@ -40,69 +31,112 @@ public sealed class ViGEmPadBackend : IPadBackend
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ValidateSlot(slot);
+        if (_xboxPads[slot] is not null || _psPads[slot] is not null) return;
 
-        if (_pads[slot] is not null) return;   // already plugged in
-
-        var pad = _client.CreateXbox360Controller();
-
-        // We decide when a report goes out, so that one Submit call is one update
-        // rather than one per field touched.
-        pad.AutoSubmitReport = false;
-
-        // Rumble arrives on a driver thread. Capture the slot so subscribers know
-        // which phone to forward it to.
-        pad.FeedbackReceived += (_, e) =>
-            RumbleReceived?.Invoke(this, new RumbleEventArgs(slot, e.LargeMotor, e.SmallMotor));
-
-        pad.Connect();
-        _pads[slot] = pad;
+        if (_controllerType == VirtualControllerType.PlayStation4)
+        {
+            var pad = _client.CreateDualShock4Controller();
+            pad.AutoSubmitReport = false;
+            // The pinned ViGEm SDK exposes motor feedback through this event for both device types.
+            // DS4 feedback is best-effort; it does not provide DualSense adaptive haptics.
+#pragma warning disable CS0618
+            pad.FeedbackReceived += (_, e) =>
+                RumbleReceived?.Invoke(this, new RumbleEventArgs(slot, e.LargeMotor, e.SmallMotor));
+#pragma warning restore CS0618
+            try
+            {
+                pad.Connect();
+                _psPads[slot] = pad;
+                Submit(slot, PadState.Neutral);
+            }
+            catch
+            {
+                _psPads[slot] = null;
+                try { pad.Disconnect(); } catch { }
+                (pad as IDisposable)?.Dispose();
+                throw;
+            }
+        }
+        else
+        {
+            var pad = _client.CreateXbox360Controller();
+            pad.AutoSubmitReport = false;
+            pad.FeedbackReceived += (_, e) =>
+                RumbleReceived?.Invoke(this, new RumbleEventArgs(slot, e.LargeMotor, e.SmallMotor));
+            try
+            {
+                pad.Connect();
+                _xboxPads[slot] = pad;
+                Submit(slot, PadState.Neutral);
+            }
+            catch
+            {
+                _xboxPads[slot] = null;
+                try { pad.Disconnect(); } catch { }
+                (pad as IDisposable)?.Dispose();
+                throw;
+            }
+        }
     }
 
     public void Submit(int slot, in PadState state)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ValidateSlot(slot);
-
-        if (_pads[slot] is not { } pad) return;   // nothing plugged in — silently ignore
-
-        // These are ref-returning properties, so each assignment writes straight
-        // into the report buffer. No allocation, no per-button calls.
-        pad.SetButtonsFull(state.Buttons);
-        pad.LeftTrigger = state.LeftTrigger;
-        pad.RightTrigger = state.RightTrigger;
-        pad.LeftThumbX = state.ThumbLX;
-        pad.LeftThumbY = state.ThumbLY;
-        pad.RightThumbX = state.ThumbRX;
-        pad.RightThumbY = state.ThumbRY;
-
-        pad.SubmitReport();
+        if (_psPads[slot] is { } ps)
+        {
+            var report = DualShock4Report.From(in state);
+            ps.SetButtonsFull(report.Buttons);
+            ps.SetSpecialButtonsFull(report.SpecialButtons);
+            ps.LeftTrigger = report.LeftTrigger;
+            ps.RightTrigger = report.RightTrigger;
+            ps.LeftThumbX = report.LeftX;
+            ps.LeftThumbY = report.LeftY;
+            ps.RightThumbX = report.RightX;
+            ps.RightThumbY = report.RightY;
+            ps.SubmitReport();
+        }
+        else if (_xboxPads[slot] is { } xbox)
+        {
+            xbox.SetButtonsFull(state.Buttons);
+            xbox.LeftTrigger = state.LeftTrigger;
+            xbox.RightTrigger = state.RightTrigger;
+            xbox.LeftThumbX = state.ThumbLX;
+            xbox.LeftThumbY = state.ThumbLY;
+            xbox.RightThumbX = state.ThumbRX;
+            xbox.RightThumbY = state.ThumbRY;
+            xbox.SubmitReport();
+        }
     }
 
     public void Disconnect(int slot)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ValidateSlot(slot);
-
-        if (_pads[slot] is not { } pad) return;
-
-        pad.Disconnect();
-        _pads[slot] = null;
+        // Neutralize even when a caller disconnects directly instead of going through SessionManager.
+        try { Submit(slot, PadState.Neutral); }
+        finally
+        {
+            var ps = _psPads[slot];
+            var xbox = _xboxPads[slot];
+            _psPads[slot] = null;
+            _xboxPads[slot] = null;
+            try { ps?.Disconnect(); }
+            finally
+            {
+                ps?.Dispose();
+                try { xbox?.Disconnect(); }
+                finally { (xbox as IDisposable)?.Dispose(); }
+            }
+        }
     }
 
     public void Dispose()
     {
         if (_disposed) return;
+        for (var slot = 0; slot < IPadBackend.MaxPads; slot++)
+            try { Disconnect(slot); } catch { /* Best-effort shutdown of every remaining slot. */ }
         _disposed = true;
-
-        for (var slot = 0; slot < _pads.Length; slot++)
-        {
-            if (_pads[slot] is not { } pad) continue;
-
-            // Best effort — we are shutting down and a failure here helps nobody.
-            try { pad.Disconnect(); } catch { /* ignored */ }
-            _pads[slot] = null;
-        }
-
         _client.Dispose();
     }
 
