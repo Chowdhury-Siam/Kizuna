@@ -70,6 +70,12 @@ internal sealed class InputPreview : FrameworkElement
         nameof(State), typeof(PadState), typeof(InputPreview),
         new FrameworkPropertyMetadata(default(PadState), FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty PlayStationProperty = DependencyProperty.Register(
+        nameof(PlayStation), typeof(bool), typeof(InputPreview),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public bool PlayStation { get => (bool)GetValue(PlayStationProperty); set => SetValue(PlayStationProperty, value); }
+
     public PadState State { get => (PadState)GetValue(StateProperty); set => SetValue(StateProperty, value); }
 
     protected override Size MeasureOverride(Size available) =>
@@ -91,10 +97,10 @@ internal sealed class InputPreview : FrameworkElement
         double X(double x) => (w - 320 * u) / 2 + x * u;
 
         // ── triggers and shoulders along the top ───────────────────────
-        TriggerBar(dc, new Rect(X(14), 6, 56 * u, 10), s.LeftTrigger, "LT", line, off, on, text);
-        TriggerBar(dc, new Rect(X(250), 6, 56 * u, 10), s.RightTrigger, "RT", line, off, on, text);
-        Pill(dc, new Rect(X(80), 4, 40 * u, 14), s.IsPressed(GamepadButtons.LeftShoulder), "LB", line, off, on, text);
-        Pill(dc, new Rect(X(200), 4, 40 * u, 14), s.IsPressed(GamepadButtons.RightShoulder), "RB", line, off, on, text);
+        TriggerBar(dc, new Rect(X(14), 6, 56 * u, 10), s.LeftTrigger, PlayStation ? "L2" : "LT", line, off, on, text);
+        TriggerBar(dc, new Rect(X(250), 6, 56 * u, 10), s.RightTrigger, PlayStation ? "R2" : "RT", line, off, on, text);
+        Pill(dc, new Rect(X(80), 4, 40 * u, 14), s.IsPressed(GamepadButtons.LeftShoulder), PlayStation ? "L1" : "LB", line, off, on, text);
+        Pill(dc, new Rect(X(200), 4, 40 * u, 14), s.IsPressed(GamepadButtons.RightShoulder), PlayStation ? "R1" : "RB", line, off, on, text);
 
         // ── sticks ─────────────────────────────────────────────────────
         Stick(dc, new Point(X(52), 70), 30 * u, s.ThumbLX, s.ThumbLY, s.IsPressed(GamepadButtons.LeftThumb), line, off, on);
@@ -115,10 +121,10 @@ internal sealed class InputPreview : FrameworkElement
         // ── face buttons, in their colours when pressed ────────────────
         var f = new Point(X(268), 66);
         var gap = 17 * u;
-        Face(dc, new Point(f.X, f.Y - gap), "Y", s.IsPressed(GamepadButtons.Y), Res("PadY"), line, off, text, u);
-        Face(dc, new Point(f.X - gap, f.Y), "X", s.IsPressed(GamepadButtons.X), Res("PadX"), line, off, text, u);
-        Face(dc, new Point(f.X + gap, f.Y), "B", s.IsPressed(GamepadButtons.B), Res("PadB"), line, off, text, u);
-        Face(dc, new Point(f.X, f.Y + gap), "A", s.IsPressed(GamepadButtons.A), Res("PadA"), line, off, text, u);
+        Face(dc, new Point(f.X, f.Y - gap), PlayStation ? "△" : "Y", s.IsPressed(GamepadButtons.Y), Res("PadY"), line, off, text, u);
+        Face(dc, new Point(f.X - gap, f.Y), PlayStation ? "□" : "X", s.IsPressed(GamepadButtons.X), Res("PadX"), line, off, text, u);
+        Face(dc, new Point(f.X + gap, f.Y), PlayStation ? "○" : "B", s.IsPressed(GamepadButtons.B), Res("PadB"), line, off, text, u);
+        Face(dc, new Point(f.X, f.Y + gap), PlayStation ? "×" : "A", s.IsPressed(GamepadButtons.A), Res("PadA"), line, off, text, u);
     }
 
     private void TriggerBar(DrawingContext dc, Rect r, byte value, string label, Pen line, Brush off, Brush on, Brush text)
