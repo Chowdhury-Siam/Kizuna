@@ -50,8 +50,10 @@ internal sealed class SlotViewModel(int slot) : ObservableObject
     private string _packetsText = "";
     private string _rumbleText = "";
     private PadState _state;
+    private bool _playStation;
 
     public int Slot { get; } = slot;
+    public bool PlayStation { get => _playStation; set => Set(ref _playStation, value); }
 
     /// <summary>Player numbers start at 1, as on the phone and on an Xbox.</summary>
     public string Title => $"Player {Slot + 1}";
