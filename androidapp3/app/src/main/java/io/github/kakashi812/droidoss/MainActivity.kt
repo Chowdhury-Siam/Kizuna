@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import io.github.kakashi812.droidoss.layout.ControllerButtons
+import io.github.kakashi812.droidoss.ui.LocalControllerButtons
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,6 +75,7 @@ class MainActivity : ComponentActivity() {
     private var editingId by mutableStateOf<String?>(null)
     private var tuningId by mutableStateOf<String?>(null)
     private var themeMode by mutableStateOf("System")
+    private var playStationButtons by mutableStateOf(false)
     private var viewingId by mutableStateOf<String?>(null)
 
     // The gallery's data, mirrored into Compose state so a Use / rename / save
@@ -141,6 +145,7 @@ class MainActivity : ComponentActivity() {
 
         refreshLayouts()
         themeMode = settings.theme
+        playStationButtons = settings.playStationButtons
         automaticUpdates = settings.automaticUpdates
         if (automaticUpdates && System.currentTimeMillis() - settings.lastUpdateCheck > 6 * 60 * 60 * 1000L) {
             settings.lastUpdateCheck = System.currentTimeMillis()
@@ -152,94 +157,98 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) importFrom(intent)
 
         setContent {
-            KizunaTheme(themeMode = themeMode) {
-                val activeLayout = layouts.firstOrNull { it.id == activeId } ?: defaultLayout()
+            CompositionLocalProvider(LocalControllerButtons provides if (playStationButtons) ControllerButtons.PLAYSTATION else ControllerButtons.XBOX) {
+                KizunaTheme(themeMode = themeMode) {
+                    val activeLayout = layouts.firstOrNull { it.id == activeId } ?: defaultLayout()
 
-                when {
-                    // Live play takes precedence over everything.
-                    connectionState is ConnectionState.Connected -> {
-                        KeepAwakeLandscape()
-                        // Back leaves the pad rather than the app, so a misfire
-                        // during play costs a tap instead of the whole session.
-                        BackHandler { disconnect() }
-                        PadScreen(
-                            transport = transport,
-                            layout = activeLayout,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
+                    when {
+                        // Live play takes precedence over everything.
+                        connectionState is ConnectionState.Connected -> {
+                            KeepAwakeLandscape()
+                            // Back leaves the pad rather than the app, so a misfire
+                            // during play costs a tap instead of the whole session.
+                            BackHandler { disconnect() }
+                            PadScreen(
+                                transport = transport,
+                                layout = activeLayout,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
 
-                    tuningId != null -> {
-                        val profile = layouts.firstOrNull { it.id == tuningId } ?: defaultLayout()
-                        BackHandler { tuningId = null }
-                        Scaffold { padding ->
-                            androidx.compose.foundation.layout.Box(Modifier.padding(padding)) {
-                                ProfileSettingsScreen(profile, onSave = {
-                                    if (saveProfile(it)) tuningId = null
-                                }, onCancel = { tuningId = null })
+                        tuningId != null -> {
+                            val profile = layouts.firstOrNull { it.id == tuningId } ?: defaultLayout()
+                            BackHandler { tuningId = null }
+                            Scaffold { padding ->
+                                androidx.compose.foundation.layout.Box(Modifier.padding(padding)) {
+                                    ProfileSettingsScreen(profile, onSave = {
+                                        if (saveProfile(it)) tuningId = null
+                                    }, onCancel = { tuningId = null })
+                                }
+                            }
+                        }
+                        // Arranging a custom layout. Same landscape framing as the pad,
+                        // because you must arrange at the size you will play at.
+                        editingId != null -> {
+                            val id = editingId!!
+                            val layout = layouts.firstOrNull { it.id == id } ?: defaultLayout()
+                            KeepAwakeLandscape()
+                            BackHandler { editingId = null }
+                            LayoutEditorScreen(
+                                initial = layout,
+                                onSave = { edited ->
+                                    if (saveProfile(edited)) editingId = null
+                                },
+                                onCancel = { editingId = null },
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
+                        // Interactive read-only preview: the real pad, sending nowhere.
+                        viewingId != null -> {
+                            val id = viewingId!!
+                            val layout = layouts.firstOrNull { it.id == id } ?: defaultLayout()
+                            KeepAwakeLandscape()
+                            BackHandler { viewingId = null }
+                            PadScreen(
+                                transport = null,
+                                layout = layout,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
+
+                        else -> {
+                            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                                ConnectScreen(
+                                    connectionState = connectionState,
+                                    initialHost = settings.host,
+                                    servers = servers,
+                                    scanning = scanning,
+                                    onScan = ::scanForServers,
+                                    layouts = layouts,
+                                    activeId = activeId,
+                                    onConnect = ::connect,
+                                    onDisconnect = ::disconnect,
+                                    layoutActions = layoutActions,
+                                    initialDeviceName = settings.deviceName,
+                                    initialSlot = settings.preferredSlot,
+                                    themeMode = themeMode,
+                                    playStationButtons = playStationButtons,
+                                    onControllerButtons = { playStationButtons = it; settings.playStationButtons = it },
+                                    onDeviceName = { settings.deviceName = it },
+                                    onSlot = { settings.preferredSlot = it },
+                                    onTheme = { settings.theme = it; themeMode = it },
+                                    updateContent = {
+                                        io.github.kakashi812.droidoss.ui.UpdatePanel(updater, automaticUpdates,
+                                            onAutomatic = { automaticUpdates = it; settings.automaticUpdates = it }, onInstall = ::installUpdate)
+                                    },
+                                    modifier = Modifier.padding(innerPadding),
+                                )
                             }
                         }
                     }
-                    // Arranging a custom layout. Same landscape framing as the pad,
-                    // because you must arrange at the size you will play at.
-                    editingId != null -> {
-                        val id = editingId!!
-                        val layout = layouts.firstOrNull { it.id == id } ?: defaultLayout()
-                        KeepAwakeLandscape()
-                        BackHandler { editingId = null }
-                        LayoutEditorScreen(
-                            initial = layout,
-                            onSave = { edited ->
-                                if (saveProfile(edited)) editingId = null
-                            },
-                            onCancel = { editingId = null },
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
 
-                    // Interactive read-only preview: the real pad, sending nowhere.
-                    viewingId != null -> {
-                        val id = viewingId!!
-                        val layout = layouts.firstOrNull { it.id == id } ?: defaultLayout()
-                        KeepAwakeLandscape()
-                        BackHandler { viewingId = null }
-                        PadScreen(
-                            transport = null,
-                            layout = layout,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-
-                    else -> {
-                        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                            ConnectScreen(
-                                connectionState = connectionState,
-                                initialHost = settings.host,
-                                servers = servers,
-                                scanning = scanning,
-                                onScan = ::scanForServers,
-                                layouts = layouts,
-                                activeId = activeId,
-                                onConnect = ::connect,
-                                onDisconnect = ::disconnect,
-                                layoutActions = layoutActions,
-                                initialDeviceName = settings.deviceName,
-                                initialSlot = settings.preferredSlot,
-                                themeMode = themeMode,
-                                onDeviceName = { settings.deviceName = it },
-                                onSlot = { settings.preferredSlot = it },
-                                onTheme = { settings.theme = it; themeMode = it },
-                                updateContent = {
-                                    io.github.kakashi812.droidoss.ui.UpdatePanel(updater, automaticUpdates,
-                                        onAutomatic = { automaticUpdates = it; settings.automaticUpdates = it }, onInstall = ::installUpdate)
-                                },
-                                modifier = Modifier.padding(innerPadding),
-                            )
-                        }
-                    }
+                    SharingDialogs()
                 }
-
-                SharingDialogs()
             }
         }
     }
