@@ -25,6 +25,7 @@ enum class ControllerButtons(val title: String) {
     }
 
     fun label(control: ControlElement, spoken: Boolean = false): String? = when (control) {
+        is MacroElement -> control.label
         is ButtonElement -> label(control.mask, control.label, spoken)
         is TriggerElement -> if (this == PLAYSTATION) {
             if (control.trigger == Trigger.LEFT) "L2" else "R2"
