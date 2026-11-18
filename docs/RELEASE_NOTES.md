@@ -1,3 +1,13 @@
+# Kizuna 1.1.3
+
+- Improves dark and light contrast on Android, reduces the header height, and gives the bottom tabs their own space below the scroll area.
+- Gives each tab a saved scroll position, makes profile rows lazy, and aligns the settings, update controls and version footer.
+- Reuses controller glass brushes during live input and editing. Draws knob motion without rebuilding the accessibility layout or mixing input a second time.
+- Stops the pad's high-rate sampling while the controller is idle. Touchpad motion and macro playback activate it as needed.
+- Shared version 1.1.3 with Android code 21.
+
+---
+
 # Kizuna 1.1.2
 
 - Both sticks keep responding when an active drag crosses another control. The drag stays with the stick until release, including in touchpad mode.
