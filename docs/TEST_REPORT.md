@@ -1,3 +1,54 @@
+# Kizuna 1.1.0 — validation report
+
+## Glass redesign (2026-11-18)
+
+Shared version **1.1.0**, Android code **18**.
+
+The Android UI now uses shared glass surfaces, fields, choices and dialogs over a cached gradient backdrop. Its light/dark theme is consistent by default; wallpaper-based dynamic color is no longer the default. Existing theme modes remain available. A floating navigation bar separates Connect, Profiles and Settings, with selection retained in the root saved state across editor visits. QR images retain their black/white scan contrast. The live pad's glass drawing updates only appearance and label sizing; it does not change control hit geometry or emitted input.
+
+The Windows dashboard uses matching translucent gradient brushes, static ambient highlights, rounded panel/button templates and focus/disabled states. Existing dynamic resource keys and handlers remain in place. The system-frame rounding attribute is ignored by Windows versions that do not support it. There is no desktop capture or claim of native Apple material rendering.
+
+| Validation | Result |
+| --- | --- |
+| Shared version validator | Passed: **1.1.0**, Android code **18** |
+| Existing Python protocol/signing/release tests | **23 passed**; validates existing tooling/protocol, not the new UI |
+| Windows XAML/project XML and source whitespace/delimiter review | Passed; these checks do not replace compilation or layout review |
+| Input/data preservation audit | The entire Android layout/input package, virtual pad backend, session manager and protocol stay byte-identical to 1.0.10 |
+| Android compile/JVM/lint | Attempted; blocked before compilation when the Gradle 9.5.0 distribution download returned `Network is unreachable` |
+| Android UI/emulator/device review | **Not run**; real rendering, narrow-window layout, contrast, keyboard/screen-reader behavior and frame rate are unverified |
+| Windows build/rendering | **Not run**; .NET SDK and a Windows desktop are unavailable here |
+| APK / Windows installer | **Not built** for this task; source is provided for the existing CI workflow |
+
+No recorded input, calibration, macro frames, game defaults or saved identities are migrated by this visual update. The older tests and reports below describe prior source versions and do not establish that this redesign compiles or passes device validation.
+
+---
+
+# Kizuna 1.0.10 — validation report
+
+## Side-wide stick input and recorded macros (2026-11-18)
+
+Shared release **1.0.10**, Android code **17**. Existing Windows output, protocol packets and game-default tables are unchanged.
+
+`PadTouchRouter` owns each pointer from touchdown. Enabled button/trigger/D-pad/macro footprints are checked before sticks. A button gesture can slide among buttons or release outside; it cannot become a side stick. Empty space chooses an enabled stick assigned to that half, with a movable visual anchor and one pointer per stick. Captured sticks pause over other control footprints, retain ownership, and rebase when leaving. The existing direct touchpad neighboring-button regression now expects this pause instead of continued motion over the button, as explicitly requested. Edge continuation in empty space remains active. Lift, missing pointers and cancellation clear ownership/output.
+
+`MacroRecorder` stores timed calibrated snapshots, skips leading idle, preserves rapid same-millisecond press/release edges, caps recording to 30 seconds / 4,096 snapshots and appends neutral. `MacroPlayer` runs one sequence once, catches up analog samples while preserving each digital press/release edge, stops on a second tap or replacement, and merges with manual input without releasing a held manual button. Manual D-pad directions take priority over replay directions. Actively held stick/trigger axes override playback, including neutral. The lifecycle clears replay and live input. The editor records on a local pad without a PC transport and saves recordings into MacroElement controls; editing/copy/history/import/export retain frame data.
+
+Sharing format 4 imports older formats 1–3. Macro imports validate timing/order, final neutral, masks, trigger ranges, frame count and macro count. Input/inflation size is capped at 8 MiB. The existing QR dialog falls back to file sharing when a recording does not fit a QR. Store format 4 retains the one-time old-preset migration guard for stores older than version 3.
+
+| Validation | Result |
+| --- | --- |
+| Shared release version validator | Passed: **1.0.10**, Android code **17** |
+| Existing Python protocol/signing/release suite | 23 passed; this does not execute Android or Kotlin behavior |
+| Source whitespace / lexical delimiter review | Passed; does not establish Kotlin compilation |
+| New pure Kotlin regression sources | 12 cases covering side ownership, button exclusions, pause/rebase, simultaneous touches, opt-out/overlaps, touchpad edges, recorded timing, cancellation/manual priority, malformed data, serialization, limits and rapid edges |
+| Android interaction regression sources | Two new cases for side drags/button fall-through and macro play/stop with a manual hold; existing touchpad neighbor case updated for the new exclusion rule |
+| Android compile / JVM tests | Attempted; Gradle 9.5.0 distribution download failed with `Network is unreachable` before compilation. New Kotlin and Android tests **not compiled or executed here** |
+| Device/Windows gameplay, upgrade, APK and installer | **Not run/built** in this environment |
+
+Prior validation results below describe earlier versions and do not establish that this version compiles or passes hardware checks.
+
+---
+
 # Kizuna 1.0.9 — validation report
 
 ## Editor animation overload fix (2026-11-18)
