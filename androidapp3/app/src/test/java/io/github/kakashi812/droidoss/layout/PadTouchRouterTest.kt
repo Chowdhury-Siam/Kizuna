@@ -46,18 +46,30 @@ class PadTouchRouterTest {
             r.up(1)
         }
     }
-    @Test fun floatingGesturePausesOverButtonAndRebasesWhenLeavingWithoutPressingIt() {
-        val r = router()
-        r.down(1, 600f, 200f, 0)
-        r.move(1, 650f, 200f, 10_000_000)
-        assertTrue(r.snapshot().inputs.single().x > 0)
-        r.move(1, 850f, 240f, 20_000_000)
-        assertTrue(r.snapshot().inputs.isEmpty())
-        assertEquals(setOf(Stick.RIGHT), r.snapshot().sticks)
-        r.move(1, 650f, 200f, 30_000_000)
-        assertEquals(0f, r.snapshot().inputs.single().x, 0f)
-        r.move(1, 680f, 200f, 40_000_000)
-        assertTrue(r.snapshot().inputs.single().x > 0)
+    @Test fun bothAnalogSticksPauseOverButtonsAndKeepTheirOriginalCentres() {
+        for ((stick, blocker) in listOf(left to dpad, right to a)) {
+            for (floating in listOf(false, true)) {
+                val r = router()
+                val x = stick.x * 1000
+                val y = if (floating) 120f else stick.y * 600
+                r.down(1, x, y, 0)
+                r.move(1, x + 25f, y, 10_000_000)
+                val before = r.snapshot()
+                assertTrue(before.inputs.single().x > 0f)
+                r.move(1, blocker.x * 1000, blocker.y * 600, 20_000_000)
+                val blocked = r.snapshot()
+                assertTrue(blocked.inputs.isEmpty())
+                assertEquals(setOf(stick.stick), blocked.sticks)
+                assertEquals(TouchPoint(0f, 0f), blocked.knobs[stick.id])
+                assertEquals(before.floatingCentres, blocked.floatingCentres)
+                r.move(1, x + 25f, y, 30_000_000)
+                assertEquals(before, r.snapshot())
+                r.move(1, x, y, 40_000_000)
+                assertEquals(ControlTouch(stick.id, 0f, 0f), r.snapshot().inputs.single())
+                r.up(1)
+                assertEquals(PadRoutingSnapshot(), r.snapshot())
+            }
+        }
     }
     @Test fun anotherFingerCannotStealAStickButCanPressANeighboringButton() {
         val r = router()
@@ -90,6 +102,8 @@ class PadTouchRouterTest {
         assertTrue(r.snapshot().inputs.single().x > 0)
         r.move(1, 850f, 240f, 2_010_000_000)
         assertTrue(r.snapshot().inputs.isEmpty())
+        r.move(1, 680f, 200f, 2_020_000_000)
+        assertEquals(ControlTouch(touchpad.id, 0f, 0f), r.snapshot().inputs.single())
         r.up(1)
         assertTrue(r.snapshot().sticks.isEmpty())
     }
