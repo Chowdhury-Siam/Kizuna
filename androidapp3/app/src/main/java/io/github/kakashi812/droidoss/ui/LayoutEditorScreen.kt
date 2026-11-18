@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -28,6 +29,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -40,7 +42,7 @@ import io.github.kakashi812.droidoss.protocol.GamepadButton
 import java.util.UUID
 import kotlin.math.roundToInt
 
-/** An aspect-correct preview with a translucent inspector sliding down over its top edge. */
+/** A full-size gameplay canvas with editing tools layered above it. */
 @Composable
 fun LayoutEditorScreen(
     initial: ControllerLayout,
@@ -59,6 +61,8 @@ fun LayoutEditorScreen(
     var menu by remember { mutableStateOf(false) }
     var resetDialog by remember { mutableStateOf(false) }
     var showGrid by remember { mutableStateOf(false) }
+    var toolbarAtTop by rememberSaveable { mutableStateOf(false) }
+    var toolbarHeightPx by remember { mutableIntStateOf(0) }
     var sliderEditing by remember { mutableStateOf(false) }
     fun checkpoint() { history.checkpoint(elements.toList()); revision++ }
     fun restore(value: List<ControlElement>) { elements.clear(); elements.addAll(value); revision++ }
@@ -78,138 +82,149 @@ fun LayoutEditorScreen(
         sliderEditing = false
         inspector = false
     }
-    BoxWithConstraints(modifier.fillMaxSize()) {
-        val aspect = maxWidth.value / maxHeight.value.coerceAtLeast(1f)
+    BoxWithConstraints(modifier.fillMaxSize().clipToBounds()) {
+        // Use the same full viewport as PadScreen. Toolbars and the inspector never
+        // participate in the canvas measurement or the drag coordinate system.
+        val w = constraints.maxWidth.toFloat()
+        val h = constraints.maxHeight.toFloat()
+        val aspect = w / h.coerceAtLeast(1f)
+        val density = LocalDensity.current
         val wide = maxWidth >= 600.dp
+        val minimumHit = with(density) { 24.dp.toPx() }
+        val toolbarHeight = with(density) { toolbarHeightPx.toDp() }
+        val panelWidth = minOf(360.dp, if (wide) maxWidth * 0.44f else (maxWidth - 16.dp).coerceAtLeast(0.dp))
+        val panelHeight = minOf(360.dp, maxHeight * 0.72f, (maxHeight - toolbarHeight - 12.dp).coerceAtLeast(0.dp))
         fun positioned(e: ControlElement, x: Float = e.x, y: Float = e.y, size: Float = e.size): ControlElement {
             val radius = size / 2f
             val ry = (radius * aspect).coerceAtMost(0.5f)
             return e.with(x = x.coerceIn(radius, 1f - radius), y = y.coerceIn(ry, 1f - ry), size = size)
         }
-        Column(Modifier.fillMaxSize()) {
-            GlassPanel(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp), shape = RoundedCornerShape(24.dp)) {
-                Column {
-                    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        EditorIcon("‹", "Cancel editing", onClick = onCancel)
-                        Column(Modifier.weight(1f).padding(horizontal = 4.dp)) {
-                            Text(if (wide) initial.name else "Edit layout", style = MaterialTheme.typography.titleSmall,
-                                maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            if (wide) Text("Tap to edit · Drag to move", style = MaterialTheme.typography.labelSmall, color = palette.onSurfaceVariant)
+
+        val visible = elements.toList().filterNot { it.hidden }
+        val placed = remember(visible, w, h) { visible.place(w, h) }
+        val labels = rememberControlLabels(placed)
+        val foreground = palette.onBackground
+        val paints = rememberControlPaints(placed, foreground)
+        val primary = palette.primary
+        val hitTargets by rememberUpdatedState(placed)
+        fun hit(position: Offset) = hitTargets.lastOrNull { it.contains(position, minimumHit) }
+        Canvas(Modifier.fillMaxSize().semantics { contentDescription = "Layout preview" }
+            .pointerInput(w, h) {
+                detectTapGestures { position ->
+                    val found = hit(position)
+                    selectedId = found?.element?.id
+                    inspector = found != null
+                    sliderEditing = false
+                }
+            }
+            .pointerInput(w, h) {
+                var dragging: String? = null
+                detectDragGestures(
+                    onDragStart = { position ->
+                        dragging = hit(position)?.element?.id
+                        if (dragging != null) { selectedId = dragging; checkpoint() }
+                    },
+                    onDragEnd = { if (dragging != null) inspector = true; dragging = null },
+                    onDragCancel = { dragging = null },
+                    onDrag = { event, delta ->
+                        val id = dragging
+                        if (id != null && w > 0f && h > 0f) {
+                            event.consume()
+                            change(id) { positioned(it, it.x + delta.x / w, it.y + delta.y / h) }
                         }
-                        if (wide) {
-                            EditorIcon("↶", "Undo", enabled = revision >= 0 && history.canUndo) { restore(history.undo(elements.toList())) }
-                            EditorIcon("↷", "Redo", enabled = history.canRedo) { restore(history.redo(elements.toList())) }
-                            TextButton(onClick = { picker = true }) { Text("Controls") }
-                        }
-                        Box {
-                            EditorIcon("⋮", "More editor actions") { menu = true }
-                            DropdownMenu(menu, { menu = false }) {
-                                DropdownMenuItem(text = { Text(if (showGrid) "Hide grid" else "Show grid") }, onClick = { showGrid = !showGrid; menu = false })
-                                DropdownMenuItem(text = { Text("Reset layout") }, onClick = { resetDialog = true; menu = false })
-                            }
-                        }
-                        Button(onClick = { onSave(initial.copy(elements = elements.toList())) }, contentPadding = PaddingValues(horizontal = 16.dp)) { Text("Save") }
+                    },
+                )
+            }) {
+            if (showGrid) for (step in 1 until 20) {
+                drawLine(foreground.copy(alpha = 0.07f), Offset(w * step / 20, 0f), Offset(w * step / 20, h))
+                drawLine(foreground.copy(alpha = 0.07f), Offset(0f, h * step / 20), Offset(w, h * step / 20))
+            }
+            placed.forEach { p ->
+                drawControl(p, paints.getValue(p.element.id), labels[p.element.id])
+                if (p.element.id == selectedId) {
+                    if (p.element is StickElement && p.element.mode == StickMode.TOUCHPAD)
+                        drawRoundRect(primary, p.centre - Offset(p.radius + 4, p.radius * 0.7f + 4),
+                            Size(p.radius * 2 + 8, p.radius * 1.4f + 8), CornerRadius(12f), style = Stroke(3f))
+                    else drawCircle(primary, p.radius + 4, p.centre, style = Stroke(3f))
+                }
+            }
+        }
+
+        GlassPanel(
+            Modifier.align(if (toolbarAtTop) Alignment.TopCenter else Alignment.BottomCenter)
+                .widthIn(max = 620.dp).fillMaxWidth().onSizeChanged { toolbarHeightPx = it.height }
+                .padding(horizontal = 6.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(24.dp),
+            strong = true,
+        ) {
+            Column {
+                Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    EditorIcon("‹", "Cancel editing", onClick = onCancel)
+                    Column(Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                        Text(if (wide) initial.name else "Edit layout", style = MaterialTheme.typography.titleSmall,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        if (wide) Text("Tap to edit · Drag to move", style = MaterialTheme.typography.labelSmall, color = palette.onSurfaceVariant)
                     }
-                    if (!wide) {
-                        // Keep Save reachable when the selected-control action appears on a narrow phone.
-                        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                            EditorIcon("↶", "Undo", enabled = revision >= 0 && history.canUndo) { restore(history.undo(elements.toList())) }
-                            EditorIcon("↷", "Redo", enabled = history.canRedo) { restore(history.redo(elements.toList())) }
-                            Spacer(Modifier.weight(1f))
-                            TextButton(onClick = { picker = true }) { Text("Controls") }
-                            if (selected != null) TextButton(onClick = { inspector = true }) { Text("Edit") }
+                    if (wide) {
+                        EditorIcon("↶", "Undo", enabled = revision >= 0 && history.canUndo) { restore(history.undo(elements.toList())) }
+                        EditorIcon("↷", "Redo", enabled = history.canRedo) { restore(history.redo(elements.toList())) }
+                        TextButton(onClick = { picker = true }) { Text("Controls") }
+                    }
+                    Box {
+                        EditorIcon("⋮", "More editor actions") { menu = true }
+                        DropdownMenu(menu, { menu = false }) {
+                            DropdownMenuItem(
+                                text = { Text(if (toolbarAtTop) "Move toolbar to bottom" else "Move toolbar to top") },
+                                onClick = { toolbarAtTop = !toolbarAtTop; menu = false },
+                            )
+                            DropdownMenuItem(text = { Text(if (showGrid) "Hide grid" else "Show grid") }, onClick = { showGrid = !showGrid; menu = false })
+                            DropdownMenuItem(text = { Text("Reset layout") }, onClick = { resetDialog = true; menu = false })
                         }
+                    }
+                    Button(onClick = { onSave(initial.copy(elements = elements.toList())) }, contentPadding = PaddingValues(horizontal = 16.dp)) { Text("Save") }
+                }
+                if (!wide) {
+                    // Keep Save reachable when the selected-control action appears on a narrow phone.
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        EditorIcon("↶", "Undo", enabled = revision >= 0 && history.canUndo) { restore(history.undo(elements.toList())) }
+                        EditorIcon("↷", "Redo", enabled = history.canRedo) { restore(history.redo(elements.toList())) }
+                        Spacer(Modifier.weight(1f))
+                        TextButton(onClick = { picker = true }) { Text("Controls") }
+                        if (selected != null) TextButton(onClick = { inspector = true }) { Text("Edit") }
                     }
                 }
             }
-            BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
-                val panelWidth = minOf(360.dp, if (wide) maxWidth * 0.44f else maxWidth - 16.dp)
-                val panelHeight = minOf(360.dp, maxHeight * 0.72f)
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    // The preview keeps the same bounds when the inspector opens or closes.
-                    BoxWithConstraints(Modifier.aspectRatio(aspect)) {
-                        val w = constraints.maxWidth.toFloat()
-                        val h = constraints.maxHeight.toFloat()
-                        val minimumHit = with(LocalDensity.current) { 20.dp.toPx() }
-                        val placed = elements.place(w, h)
-                        val labels = rememberControlLabels(placed)
-                        val foreground = palette.onBackground
-                        val paints = rememberControlPaints(placed, foreground)
-                        val primary = palette.primary
-                        fun hit(position: Offset) = elements.place(w, h).lastOrNull { !it.element.hidden && it.contains(position, minimumHit) }
-                        Canvas(Modifier.fillMaxSize().semantics { contentDescription = "Layout preview" }
-                            .pointerInput(w, h) {
-                                detectTapGestures { position ->
-                                    val found = hit(position)
-                                    selectedId = found?.element?.id
-                                    inspector = found != null
-                                    sliderEditing = false
-                                }
-                            }
-                            .pointerInput(w, h) {
-                                var dragging: String? = null
-                                detectDragGestures(
-                                    onDragStart = { position ->
-                                        dragging = hit(position)?.element?.id
-                                        if (dragging != null) { selectedId = dragging; checkpoint() }
-                                    },
-                                    onDragEnd = { if (dragging != null) inspector = true; dragging = null },
-                                    onDragCancel = { dragging = null },
-                                    onDrag = { event, delta ->
-                                        val id = dragging
-                                        if (id != null) {
-                                            event.consume()
-                                            change(id) { positioned(it, it.x + delta.x / w, it.y + delta.y / h) }
-                                        }
-                                    },
-                                )
-                            }) {
-                            if (showGrid) for (step in 1 until 20) {
-                                drawLine(foreground.copy(alpha = 0.07f), Offset(w * step / 20, 0f), Offset(w * step / 20, h))
-                                drawLine(foreground.copy(alpha = 0.07f), Offset(0f, h * step / 20), Offset(w, h * step / 20))
-                            }
-                            placed.filter { !it.element.hidden }.forEach { p ->
-                                drawControl(p, paints.getValue(p.element.id), labels[p.element.id])
-                                if (p.element.id == selectedId) {
-                                    if (p.element is StickElement && p.element.mode == StickMode.TOUCHPAD)
-                                        drawRoundRect(primary, p.centre - Offset(p.radius + 4, p.radius * 0.7f + 4),
-                                            Size(p.radius * 2 + 8, p.radius * 1.4f + 8), CornerRadius(12f), style = Stroke(3f))
-                                    else drawCircle(primary, p.radius + 4, p.centre, style = Stroke(3f))
-                                }
-                            }
-                        }
+        }
+
+        // No scrim or modal window: exposed controls remain selectable and draggable.
+        androidx.compose.animation.AnimatedVisibility(
+            visible = inspector && selected != null,
+            modifier = Modifier.align(Alignment.TopCenter)
+                .padding(top = 6.dp + (if (toolbarAtTop) toolbarHeight else 0.dp))
+                .width(panelWidth),
+            enter = slideInVertically(tween(220)) { -it } + fadeIn(tween(180)),
+            exit = slideOutVertically(tween(180)) { -it } + fadeOut(tween(140)),
+        ) {
+            if (selected != null) Inspector(selected, tab, { tab = it }, { sliderEditing = false; inspector = false },
+                Modifier.fillMaxWidth().height(panelHeight).semantics { contentDescription = "Control inspector" },
+                change = { edit -> action { change(selected.id, edit) } },
+                slider = { edit -> sliderChange { change(selected.id, edit) } },
+                finished = { sliderEditing = false },
+                move = { x, y -> sliderChange { change(selected.id) { positioned(it, x ?: it.x, y ?: it.y) } } },
+                align = { x, y -> action { change(selected.id) { positioned(it, x ?: it.x, y ?: it.y) } } },
+                resize = { value -> sliderChange { change(selected.id) { positioned(it, size = value) } } },
+                layer = { front -> action { elements.remove(selected); if (front) elements.add(selected) else elements.add(0, selected) } },
+                duplicate = {
+                    action {
+                        val copy = positioned(selected.with(id = UUID.randomUUID().toString().take(32)), x = selected.x + 0.04f)
+                        elements.add(copy); selectedId = copy.id
                     }
-                }
-                // No scrim or modal window: exposed controls remain selectable and draggable.
-                // Qualify the top-level overload: an enclosing ColumnScope otherwise shadows it.
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = inspector && selected != null,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(vertical = 6.dp).width(panelWidth),
-                    enter = slideInVertically(tween(220)) { -it } + fadeIn(tween(180)),
-                    exit = slideOutVertically(tween(180)) { -it } + fadeOut(tween(140)),
-                ) {
-                    if (selected != null) Inspector(selected, tab, { tab = it }, { sliderEditing = false; inspector = false },
-                        Modifier.fillMaxWidth().height(panelHeight).semantics { contentDescription = "Control inspector" },
-                        change = { edit -> action { change(selected.id, edit) } },
-                        slider = { edit -> sliderChange { change(selected.id, edit) } },
-                        finished = { sliderEditing = false },
-                        move = { x, y -> sliderChange { change(selected.id) { positioned(it, x ?: it.x, y ?: it.y) } } },
-                        align = { x, y -> action { change(selected.id) { positioned(it, x ?: it.x, y ?: it.y) } } },
-                        resize = { value -> sliderChange { change(selected.id) { positioned(it, size = value) } } },
-                        layer = { front -> action { elements.remove(selected); if (front) elements.add(selected) else elements.add(0, selected) } },
-                        duplicate = {
-                            action {
-                                val copy = positioned(selected.with(id = UUID.randomUUID().toString().take(32)), x = selected.x + 0.04f)
-                                elements.add(copy); selectedId = copy.id
-                            }
-                        }, canDuplicate = elements.size < LayoutShare.MAX_ELEMENTS && (selected !is MacroElement || elements.count { it is MacroElement } < MAX_MACROS),
-                        reset = { action { change(selected.id) { original -> initial.elements.firstOrNull { it.id == original.id }
-                            ?: defaultLayout().elements.firstOrNull { it.id == original.id } ?: original.with(size = 0.1f, opacity = 0.85f, hidden = false) } } },
-                        record = { recordMacroId = selected.id },
-                        delete = { action { elements.remove(selected); selectedId = null; inspector = false } },
-                    )
-                }
-            }
+                }, canDuplicate = elements.size < LayoutShare.MAX_ELEMENTS && (selected !is MacroElement || elements.count { it is MacroElement } < MAX_MACROS),
+                reset = { action { change(selected.id) { original -> initial.elements.firstOrNull { it.id == original.id }
+                    ?: defaultLayout().elements.firstOrNull { it.id == original.id } ?: original.with(size = 0.1f, opacity = 0.85f, hidden = false) } } },
+                record = { recordMacroId = selected.id },
+                delete = { action { elements.remove(selected); selectedId = null; inspector = false } },
+            )
         }
     }
     recordMacroId?.let { id ->
