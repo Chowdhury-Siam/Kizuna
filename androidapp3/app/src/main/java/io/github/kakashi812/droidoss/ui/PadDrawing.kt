@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import io.github.kakashi812.droidoss.layout.MacroElement
 import io.github.kakashi812.droidoss.layout.ButtonElement
 import io.github.kakashi812.droidoss.layout.ControlElement
 import io.github.kakashi812.droidoss.layout.DpadElement
@@ -93,16 +95,13 @@ internal fun rememberControlLabels(placed: List<Placed>): Map<String, TextLayout
             for (p in placed) {
                 val text = controllerButtons.label(p.element) ?: continue
 
-                put(
-                    p.element.id,
-                    textMeasurer.measure(
-                        text = AnnotatedString(text),
-                        style = TextStyle(
-                            fontSize = with(density) { (p.radius * LABEL_FRACTION).toSp() },
-                            fontWeight = FontWeight.Medium,
-                        ),
-                    ),
-                )
+                val content = AnnotatedString(text)
+                val style = TextStyle(fontSize = with(density) { (p.radius * LABEL_FRACTION).toSp() }, fontWeight = FontWeight.Medium)
+                val measured = textMeasurer.measure(text = content, style = style)
+                val available = p.radius * 1.7f
+                put(p.element.id, if (measured.size.width > available) {
+                    textMeasurer.measure(text = content, style = style.copy(fontSize = style.fontSize * (available / measured.size.width.coerceAtLeast(1))))
+                } else measured)
             }
         }
     }
@@ -121,64 +120,31 @@ internal fun DrawScope.drawControl(
     val ink = if (element.color == 0xFFE0E4EC) foreground else Color(element.color)
     val alpha = element.opacity * (if (element.enabled && !element.hidden) 1f else 0.3f)
 
+    val darkBackdrop = foreground.luminance() > .5f
     when (element) {
         is StickElement -> if (element.mode == StickMode.TOUCHPAD) {
-            val top = placed.centre - Offset(placed.radius, placed.radius * 0.7f)
-            val area = Size(placed.radius * 2f, placed.radius * 1.4f)
-            drawRoundRect(ink.copy(alpha = alpha * 0.08f), top, area, CornerRadius(placed.radius * 0.16f))
-            drawRoundRect(ink.copy(alpha = alpha * 0.5f), top, area, CornerRadius(placed.radius * 0.16f), style = Stroke(STROKE_WIDTH))
-            drawLine(ink.copy(alpha = alpha * 0.16f), placed.centre - Offset(placed.radius * 0.6f, 0f), placed.centre + Offset(placed.radius * 0.6f, 0f), 1.5f)
-            drawLine(ink.copy(alpha = alpha * 0.16f), placed.centre - Offset(0f, placed.radius * 0.4f), placed.centre + Offset(0f, placed.radius * 0.4f), 1.5f)
-            if (isDown) drawCircle(ink.copy(alpha = alpha * 0.7f), placed.radius * 0.12f, placed.centre + (knobs[element.id] ?: Offset.Zero))
+            val top = placed.centre - Offset(placed.radius, placed.radius * .7f)
+            val area = Size(placed.radius * 2, placed.radius * 1.4f)
+            drawGlassTile(top, area, placed.radius * .18f, alpha * .8f, ink, isDown, darkBackdrop)
+            drawLine(ink.copy(alpha = alpha * .10f), placed.centre - Offset(placed.radius * .6f, 0f), placed.centre + Offset(placed.radius * .6f, 0f), 1f)
+            drawLine(ink.copy(alpha = alpha * .10f), placed.centre - Offset(0f, placed.radius * .4f), placed.centre + Offset(0f, placed.radius * .4f), 1f)
+            if (isDown) drawGlassCircle(placed.centre + (knobs[element.id] ?: Offset.Zero), placed.radius * .13f, alpha, ink, true, darkBackdrop)
         } else {
-            drawCircle(
-                color = ink.copy(alpha = alpha * 0.10f),
-                radius = placed.radius,
-                center = placed.centre,
-            )
-            drawCircle(
-                color = ink.copy(alpha = alpha * 0.35f),
-                radius = placed.radius,
-                center = placed.centre,
-                style = Stroke(width = STROKE_WIDTH),
-            )
-
-            // The knob tracking the thumb is most of what replaces the missing
-            // tactile feel -- you can see exactly what the stick is reporting.
-            val knob = knobs[element.id] ?: Offset.Zero
-            drawCircle(
-                color = ink.copy(alpha = alpha * 0.70f),
-                radius = placed.radius * KNOB_FRACTION,
-                center = placed.centre + knob,
-            )
+            drawGlassCircle(placed.centre, placed.radius, alpha * .65f, ink, false, darkBackdrop)
+            val knob = placed.centre + (knobs[element.id] ?: Offset.Zero)
+            drawGlassCircle(knob, placed.radius * KNOB_FRACTION, alpha, ink, isDown, darkBackdrop)
+            drawCircle(ink.copy(alpha = alpha * .2f), placed.radius * KNOB_FRACTION * .88f, knob)
         }
-
-        // A cross, not a circle with a knob. Drawing it like a stick made it
-        // read as a third stick, which is exactly what it must never look like:
-        // a D-pad promises four discrete directions and a stick promises smooth
-        // travel, and the shape is the only thing telling you which you have.
-        is DpadElement -> drawDpad(placed, dpadMask, alpha, ink)
-
-        is ButtonElement, is TriggerElement -> {
-            drawCircle(
-                color = ink.copy(alpha = if (isDown) alpha * 0.80f else alpha * 0.15f),
-                radius = placed.radius,
-                center = placed.centre,
-            )
-            drawCircle(
-                color = ink.copy(alpha = alpha * 0.5f),
-                radius = placed.radius,
-                center = placed.centre,
-                style = Stroke(width = STROKE_WIDTH),
-            )
-        }
+        is DpadElement -> drawDpad(placed, dpadMask, alpha, ink, darkBackdrop)
+        is ButtonElement, is TriggerElement, is MacroElement ->
+            drawGlassCircle(placed.centre, placed.radius, alpha, ink, isDown, darkBackdrop)
     }
 
     // Labels last, so they sit on top of the pressed fill.
     labels[element.id]?.let { measured ->
         drawText(
             textLayoutResult = measured,
-            color = ink.copy(alpha = alpha * if (isDown) 0.95f else 0.7f),
+            color = ink.copy(alpha = alpha * if (isDown) 1f else .92f),
             topLeft = placed.centre - Offset(
                 measured.size.width / 2f,
                 measured.size.height / 2f,
@@ -188,7 +154,7 @@ internal fun DrawScope.drawControl(
 }
 
 /** Large, separated arrow pads use the full footprint and highlight the actual output bits. */
-internal fun DrawScope.drawDpad(placed: Placed, mask: Int, alpha: Float, ink: Color) {
+internal fun DrawScope.drawDpad(placed: Placed, mask: Int, alpha: Float, ink: Color, darkBackdrop: Boolean = true) {
     val r = placed.radius
     val c = placed.centre
     drawCircle(ink.copy(alpha = alpha * 0.05f), r, c)
@@ -206,8 +172,7 @@ internal fun DrawScope.drawDpad(placed: Placed, mask: Int, alpha: Float, ink: Co
         val top = c + offset * r
         val area = Size(size.width * r, size.height * r)
         val corner = CornerRadius(r * 0.12f)
-        drawRoundRect(ink.copy(alpha = alpha * if (active) 0.75f else 0.16f), top, area, corner)
-        drawRoundRect(ink.copy(alpha = alpha * if (active) 0.95f else 0.55f), top, area, corner, style = Stroke(STROKE_WIDTH))
+        drawGlassTile(top, area, corner.x, alpha, ink, active, darkBackdrop)
         val direction = when (bit) { 1 -> Offset(0f, -1f); 2 -> Offset(0f, 1f); 4 -> Offset(-1f, 0f); else -> Offset(1f, 0f) }
         val middle = c + direction * (r * 0.67f)
         val wing = Offset(-direction.y, direction.x) * (r * 0.11f)
@@ -218,6 +183,27 @@ internal fun DrawScope.drawDpad(placed: Placed, mask: Int, alpha: Float, ink: Co
         drawLine(arrow, back - wing, tip, STROKE_WIDTH)
     }
     drawCircle(ink.copy(alpha = alpha * 0.25f), r * 0.10f, c)
+}
+
+/** Convex highlights are drawn directly; no blur of the live control layer is needed. */
+private fun DrawScope.drawGlassCircle(c: Offset, radius: Float, alpha: Float, ink: Color, down: Boolean, dark: Boolean) {
+    val from = c - Offset(radius, radius); val to = c + Offset(radius, radius)
+    drawCircle(Color.Black.copy(alpha = alpha * if (dark) .12f else .06f), radius + 1f, c + Offset(0f, radius * .055f))
+    drawCircle(Brush.linearGradient(listOf(Color.White.copy(alpha = alpha * if (dark) .22f else .93f),
+        Color(0xFF97B8DF).copy(alpha = alpha * if (dark) .10f else .30f)), from, to), radius, c)
+    if (down) drawCircle(ink.copy(alpha = alpha * .22f), radius, c)
+    drawCircle(Brush.linearGradient(listOf(Color.White.copy(alpha = alpha * if (dark) .68f else .98f),
+        ink.copy(alpha = alpha * .14f)), from, to), radius, c, style = Stroke(1.5f))
+    drawCircle(Color.White.copy(alpha = alpha * .07f), (radius - 2f).coerceAtLeast(0f), c, style = Stroke(1f))
+}
+
+private fun DrawScope.drawGlassTile(top: Offset, area: Size, corner: Float, alpha: Float, ink: Color, down: Boolean, dark: Boolean) {
+    val to = top + Offset(area.width, area.height)
+    drawRoundRect(Brush.linearGradient(listOf(Color.White.copy(alpha = alpha * if (dark) .22f else .9f),
+        Color(0xFF97B8DF).copy(alpha = alpha * .14f)), top, to), top, area, CornerRadius(corner))
+    if (down) drawRoundRect(ink.copy(alpha = alpha * .27f), top, area, CornerRadius(corner))
+    drawRoundRect(Brush.linearGradient(listOf(Color.White.copy(alpha = alpha * if (dark) .6f else .96f),
+        ink.copy(alpha = alpha * .18f)), top, to), top, area, CornerRadius(corner), style = Stroke(1.5f))
 }
 
 internal const val STROKE_WIDTH = 3f
