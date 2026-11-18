@@ -83,10 +83,19 @@ class PadTouchRouter(private val targets: List<TouchTarget>, private val width: 
         val stick = target.element as StickElement
         // Button footprints pause either stick without transferring its pointer or firing the button.
         if (buttonAt(x, y) != null) {
-            g.output = null; g.blocked = true; g.motion = null; g.knob = TouchPoint(0f, 0f)
+            g.output = null
+            g.blocked = true
+            g.motion = null
+            g.knob = TouchPoint(0f, 0f)
             return
         }
-        if (g.blocked) { g.anchorX = x; g.anchorY = y; g.blocked = false; g.motion = null }
+        if (g.blocked && stick.mode == StickMode.TOUCHPAD) {
+            // Restart relative camera motion without counting travel over the button.
+            g.anchorX = x
+            g.anchorY = y
+        }
+        g.blocked = false
+        // Analog sticks always measure from the original centre of the drag.
         val dx = (x - g.anchorX) / target.radius; val dy = (y - g.anchorY) / target.radius
         if (stick.mode == StickMode.TOUCHPAD) {
             val motion = g.motion ?: TouchpadMotion(dx, dy, eventTime).also { g.motion = it }
