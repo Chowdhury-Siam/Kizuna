@@ -21,181 +21,207 @@
 
 package io.github.kakashi812.droidoss.ui
 
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.PointerId
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.*
-import androidx.compose.foundation.focusable
+import androidx.compose.ui.unit.dp
 import io.github.kakashi812.droidoss.layout.*
+import io.github.kakashi812.droidoss.protocol.PadState
 import io.github.kakashi812.droidoss.transport.UdpTransport
 import kotlinx.coroutines.delay
 
-/** Raw multitouch stays independent of the 125 Hz sender. Accessibility actions toggle a hold. */
 @Composable
-fun PadScreen(transport: UdpTransport?, layout: ControllerLayout, modifier: Modifier = Modifier) {
+fun PadScreen(
+    transport: UdpTransport?, layout: ControllerLayout, modifier: Modifier = Modifier,
+    onSnapshot: ((PadState) -> Unit)? = null, showStatus: Boolean = true,
+) {
     val context = LocalContext.current
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val minimumTouchRadius = with(density) { 24.dp.toPx() }
-    val touches = remember(layout) { mutableStateMapOf<PointerId, ControlTouch>() }
-    val accessible = remember(layout) { mutableStateMapOf<String, ControlTouch>() }
-    val touchpads = remember(layout) { mutableMapOf<PointerId, TouchpadMotion>() }
-    val touchPoints = remember(layout) { mutableStateMapOf<String, Offset>() }
-    val pressed = remember { mutableStateMapOf<String, Boolean>() }
-    val knobs = remember { mutableStateMapOf<String, Offset>() }
+    val observer by rememberUpdatedState(onSnapshot)
     var status by remember { mutableStateOf("Preview · no input sent") }
     LaunchedEffect(transport) {
-        while (true) {
-            status = transport?.statusText ?: "Preview · no input sent"
-            delay(500)
-        }
+        while (true) { status = transport?.statusText ?: "Preview · no input sent"; delay(500) }
     }
-    fun publish() {
-        val active = touches.values + accessible.values
-        val mixed = mixInput(layout, active)
-        transport?.update {
-            buttons = mixed.buttons; leftTrigger = mixed.leftTrigger; rightTrigger = mixed.rightTrigger
-            thumbLX = mixed.thumbLX; thumbLY = mixed.thumbLY; thumbRX = mixed.thumbRX; thumbRY = mixed.thumbRY
-        }
-    }
-    LaunchedEffect(layout, transport) {
-        while (true) {
-            delay(16)
-            var changed = false
-            touchpads.forEach { (id, motion) ->
-                val previous = touches[id] ?: return@forEach
-                val current = motion.sample(previous.id, System.nanoTime())
-                if (current != previous) { touches[id] = current; changed = true }
-            }
-            if (changed) publish()
-        }
-    }
-    DisposableEffect(layout, transport) {
-        onDispose { touchpads.clear(); touchPoints.clear(); touches.clear(); accessible.clear(); transport?.update { reset() } }
-    }
-    BoxWithConstraints(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        val w = constraints.maxWidth.toFloat()
-        val h = constraints.maxHeight.toFloat()
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val w = constraints.maxWidth.toFloat(); val h = constraints.maxHeight.toFloat()
+        val minimum = with(density) { 24.dp.toPx() }
         val placed = remember(layout, w, h) { layout.elements.filter { !it.hidden }.place(w, h) }
+        val router = remember(layout, w, h, minimum) {
+            PadTouchRouter(placed.map { TouchTarget(it.element, it.centre.x, it.centre.y, it.radius) }, w, minimum)
+        }
+        var routing by remember(router) { mutableStateOf(PadRoutingSnapshot()) }
+        val accessible = remember(router) { mutableStateMapOf<String, ControlTouch>() }
+        val player = remember(router) { MacroPlayer() }
+        var playingId by remember(router) { mutableStateOf<String?>(null) }
+        var macroFrame by remember(router) { mutableStateOf<MacroFrame?>(null) }
+        fun publish() {
+            val active = routing.inputs + accessible.values
+            val manual = mixInput(layout, active)
+            val accessibleControls = layout.elements.filter { accessible.containsKey(it.id) }
+            val sticks = routing.sticks + accessibleControls.filterIsInstance<StickElement>().map { it.stick }
+            val triggers = routing.triggers + accessibleControls.filterIsInstance<TriggerElement>().map { it.trigger }
+            val mixed = mergeMacro(manual, macroFrame, sticks, triggers)
+            observer?.invoke(mixed)
+            transport?.update {
+                buttons = mixed.buttons; leftTrigger = mixed.leftTrigger; rightTrigger = mixed.rightTrigger
+                thumbLX = mixed.thumbLX; thumbLY = mixed.thumbLY; thumbRX = mixed.thumbRX; thumbRY = mixed.thumbRY
+            }
+        }
+        fun play(macro: MacroElement) {
+            if (playingId == macro.id) { player.stop(); playingId = null; macroFrame = null }
+            else {
+                val now = SystemClock.uptimeMillis()
+                player.start(macro, now)
+                playingId = if (player.running) macro.id else null
+                macroFrame = player.sample(now)
+            }
+            publish()
+        }
+        fun cancelMacro() { player.stop(); playingId = null; macroFrame = null; publish() }
+        LaunchedEffect(router, transport) {
+            while (true) {
+                delay(8)
+                val nextRouting = if (router.sample(System.nanoTime())) router.snapshot() else routing
+                val nextFrame = player.sample(SystemClock.uptimeMillis())
+                val changed = routing != nextRouting || macroFrame != nextFrame
+                routing = nextRouting; macroFrame = nextFrame
+                if (!player.running) playingId = null
+                if (changed) publish()
+            }
+        }
+        DisposableEffect(router, transport) {
+            onDispose {
+                router.clear(); accessible.clear(); player.stop()
+                observer?.invoke(PadState())
+                transport?.update { reset() }
+            }
+        }
+        val allTouches = routing.inputs + accessible.values
+        val accessibleControls = layout.elements.filter { accessible.containsKey(it.id) }
+        val displayState = mergeMacro(mixInput(layout, allTouches), macroFrame,
+            routing.sticks + accessibleControls.filterIsInstance<StickElement>().map { it.stick },
+            routing.triggers + accessibleControls.filterIsInstance<TriggerElement>().map { it.trigger })
+        val pressed = allTouches.associate { it.id to true }.toMutableMap().also { if (playingId != null) it[playingId!!] = true }
+        if (macroFrame != null) placed.forEach { p ->
+            when (val e = p.element) {
+                is ButtonElement -> if (displayState.isPressed(e.mask)) pressed[e.id] = true
+                is TriggerElement -> if ((if (e.trigger == Trigger.LEFT) displayState.leftTrigger else displayState.rightTrigger) > 0) pressed[e.id] = true
+                is StickElement -> {
+                    val moving = if (e.stick == Stick.LEFT) displayState.thumbLX.toInt() != 0 || displayState.thumbLY.toInt() != 0
+                        else displayState.thumbRX.toInt() != 0 || displayState.thumbRY.toInt() != 0
+                    if (moving) pressed[e.id] = true
+                }
+                else -> Unit
+            }
+        }
         val dpadMasks = placed.mapNotNull { p ->
             val dpad = p.element as? DpadElement ?: return@mapNotNull null
-            p.element.id to (touches.values + accessible.values).filter { it.id == dpad.id }.fold(0) { bits, touch ->
-                bits or dpadButtons(touch.x, touch.y, dpad.deadzone, dpad.diagonals)
-            }
+            dpad.id to (displayState.buttons and 0x000F)
         }.toMap()
         val labels = rememberControlLabels(placed)
         val controllerButtons = LocalControllerButtons.current
         val ink = MaterialTheme.colorScheme.onBackground
         val visualScale = placed.associate { p ->
-            val scale by animateFloatAsState(if (p.element !is DpadElement && (pressed[p.element.id] == true || accessible.containsKey(p.element.id))) 0.93f else 1f,
-                animationSpec = spring(dampingRatio = 0.65f, stiffness = 700f), label = "Control press")
+            val scale by animateFloatAsState(if (p.element !is DpadElement && pressed[p.element.id] == true) .93f else 1f,
+                animationSpec = spring(dampingRatio = .65f, stiffness = 700f), label = "Control press")
             p.element.id to scale
         }
         val visualKnobs = placed.associate { p ->
-            val offset by animateOffsetAsState(knobs[p.element.id] ?: Offset.Zero,
-                animationSpec = spring(dampingRatio = 0.8f, stiffness = 1000f), label = "Stick return")
+            val replay = if (macroFrame != null && p.element is StickElement) {
+                val left = p.element.stick == Stick.LEFT
+                Offset((if (left) displayState.thumbLX else displayState.thumbRX) / 32767f,
+                    -(if (left) displayState.thumbLY else displayState.thumbRY) / 32767f) * p.radius
+            } else Offset.Zero
+            val raw = routing.knobs[p.element.id]?.let { Offset(it.x, it.y) } ?: accessible[p.element.id]?.let { Offset(it.x, it.y) * p.radius } ?: replay
+            val offset by animateOffsetAsState(raw, animationSpec = spring(dampingRatio = .8f, stiffness = 1000f), label = "Stick return")
             p.element.id to offset
         }
-        Canvas(Modifier.fillMaxSize().pointerInput(placed, transport) {
+        val visualPlaced = placed.map { p -> routing.floatingCentres[p.element.id]?.let { p.copy(centre = Offset(it.x, it.y)) } ?: p }
+        Canvas(Modifier.fillMaxSize().semantics { contentDescription = "Controller touch area" }.pointerInput(router, transport) {
             try {
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
                         for (c in event.changes) {
-                            if (!c.pressed) { touches.remove(c.id); touchpads.remove(c.id); continue }
-                            val previous = touches[c.id]
-                            var owned = placed.firstOrNull { it.element.id == previous?.id }
-                            if (owned != null) {
-                                val releaseOnExit = owned.element is ButtonElement || owned.element is TriggerElement || owned.element is DpadElement
-                                val tolerance = if (owned.element is DpadElement) maxOf(owned.radius * 1.2f, minimumTouchRadius) else minimumTouchRadius
-                                if (releaseOnExit && !owned.contains(c.position, tolerance)) owned = null
+                            if (!c.pressed) router.up(c.id.value)
+                            else {
+                                val now = System.nanoTime(); val eventTime = c.uptimeMillis * 1_000_000L
+                                if (!c.previousPressed) {
+                                    if (c.isConsumed) continue
+                                    val macro = router.down(c.id.value, c.position.x, c.position.y, now, eventTime)
+                                    if (macro != null) play(macro)
+                                    if (router.snapshot().inputs.isNotEmpty()) vibrate(context, layout.input.vibration, 15)
+                                } else router.move(c.id.value, c.position.x, c.position.y, now, eventTime)
+                                c.consume()
                             }
-                            if (owned == null) owned = placed.lastOrNull { p ->
-                                p.element.enabled && p.contains(c.position, minimumTouchRadius) && touches.none { it.key != c.id && it.value.id == p.element.id }
-                            }
-                            if (owned == null) { touches.remove(c.id); touchpads.remove(c.id); continue }
-                            val delta = (c.position - owned.centre) / owned.radius
-                            val element = owned.element
-                            if (element is StickElement && element.mode == StickMode.TOUCHPAD) {
-                                val now = System.nanoTime()
-                                val eventTime = c.uptimeMillis * 1_000_000L
-                                val motion = touchpads.getOrPut(c.id) { TouchpadMotion(delta.x, delta.y, eventTime) }
-                                motion.move(delta.x, delta.y, now, eventTime)
-                                touches[c.id] = motion.sample(element.id, now)
-                                touchPoints[element.id] = Offset(delta.x.coerceIn(-1f, 1f), delta.y.coerceIn(-0.7f, 0.7f)) * owned.radius
-                            } else touches[c.id] = ControlTouch(element.id, delta.x, delta.y)
-                            if (previous?.id != owned.element.id) vibrate(context, layout.input.vibration, 15)
-                            c.consume()
                         }
-                        val stillDown = event.changes.filter { it.pressed }.map { it.id }.toSet()
-                        touches.keys.filter { it !in stillDown }.forEach { touches.remove(it); touchpads.remove(it) }
-                        pressed.clear(); knobs.clear()
-                        for (t in touches.values + accessible.values) {
-                            pressed[t.id] = true
-                            val p = placed.firstOrNull { it.element.id == t.id } ?: continue
-                            if (p.element is StickElement && p.element.mode == StickMode.TOUCHPAD) {
-                                knobs[t.id] = touchPoints[t.id] ?: Offset.Zero
-                                continue
-                            }
-                            val delta = Offset(t.x, t.y) * p.radius
-                            knobs[t.id] = if (delta.getDistance() > p.radius) delta * (p.radius / delta.getDistance()) else delta
-                        }
+                        router.retain(event.changes.filter { it.pressed }.map { it.id.value }.toSet())
+                        routing = router.snapshot()
                         publish()
                     }
                 }
-            } finally { touchpads.clear(); touchPoints.clear(); touches.clear(); publish() }
+            } finally {
+                router.clear(); player.stop(); macroFrame = null; playingId = null
+                routing = router.snapshot(); publish()
+            }
         }) {
-            placed.forEach { p ->
+            visualPlaced.forEach { p ->
                 withTransform({ scale(visualScale[p.element.id] ?: 1f, visualScale[p.element.id] ?: 1f, p.centre) }) {
                     drawControl(p, pressed, visualKnobs, labels, ink, dpadMasks[p.element.id] ?: 0)
                 }
             }
         }
-        // Separate semantic bounds preserve simultaneous raw touch handling.
-        placed.filter { it.element.enabled }.forEach { p ->
-            val name = when (val e = p.element) {
+        visualPlaced.filter { it.element.enabled }.forEach { p ->
+            val e = p.element
+            val name = when (e) {
+                is MacroElement -> "Macro ${e.label}"
                 is ButtonElement -> if (controllerButtons == ControllerButtons.PLAYSTATION) controllerButtons.label(e, spoken = true)!! else when (e.mask) {
                     0x10 -> "Start"; 0x20 -> "Back"; 0x40 -> "Left stick click"; 0x80 -> "Right stick click"
-                    0x100 -> "Left shoulder"; 0x200 -> "Right shoulder"; 0x400 -> "Guide"
-                    else -> e.label
+                    0x100 -> "Left shoulder"; 0x200 -> "Right shoulder"; 0x400 -> "Guide"; else -> e.label
                 }
                 is TriggerElement -> controllerButtons.label(e)!!
                 is StickElement -> "${e.stick} ${if (e.mode == StickMode.TOUCHPAD) "touchpad" else "stick"}"
                 is DpadElement -> "Directional pad"
             }
-            val touchRadius = maxOf(p.radius, minimumTouchRadius)
-            Box(Modifier.offset(with(density) { (p.centre.x - touchRadius).toDp() }, with(density) { (p.centre.y - touchRadius).toDp() })
-                .size(with(density) { (touchRadius * 2).toDp() }).semantics {
+            val radius = maxOf(p.radius, minimum)
+            Box(Modifier.offset(with(density) { (p.centre.x - radius).toDp() }, with(density) { (p.centre.y - radius).toDp() })
+                .size(with(density) { (radius * 2).toDp() }).semantics {
                     contentDescription = name
-                    stateDescription = if (p.element is DpadElement) {
-                        val mask = dpadMasks[p.element.id] ?: 0
-                        listOf(1 to "Up", 2 to "Down", 4 to "Left", 8 to "Right")
-                            .filter { mask and it.first != 0 }.joinToString(" + ") { it.second }.ifEmpty { "Released" }
-                    } else if (p.element is StickElement && p.element.mode == StickMode.TOUCHPAD) {
-                        if ((touches.values + accessible.values).any { it.id == p.element.id && (it.x != 0f || it.y != 0f) }) "Moving" else "Stopped"
-                    } else if (touches.values.any { it.id == p.element.id } || accessible.containsKey(p.element.id)) "Held" else "Released"
+                    stateDescription = when (e) {
+                        is MacroElement -> if (playingId == e.id) "Playing" else if (e.frames.isEmpty()) "Not recorded" else "Ready"
+                        is DpadElement -> listOf(1 to "Up", 2 to "Down", 4 to "Left", 8 to "Right")
+                            .filter { (dpadMasks[e.id] ?: 0) and it.first != 0 }.joinToString(" + ") { it.second }.ifEmpty { "Released" }
+                        is StickElement -> if (e.mode == StickMode.TOUCHPAD) {
+                            if (allTouches.any { it.id == e.id && (it.x != 0f || it.y != 0f) } || (macroFrame != null && pressed[e.id] == true)) "Moving" else "Stopped"
+                        } else if (pressed[e.id] == true) "Held" else "Released"
+                        else -> if (pressed[e.id] == true) "Held" else "Released"
+                    }
                     fun toggle(x: Float, y: Float): Boolean {
-                        val next = ControlTouch(p.element.id, x, y)
-                        if (accessible[p.element.id] == next) accessible.remove(p.element.id)
-                        else accessible[p.element.id] = next
+                        val next = ControlTouch(e.id, x, y)
+                        if (accessible[e.id] == next) accessible.remove(e.id) else accessible[e.id] = next
                         publish(); return true
                     }
-                    onClick("Toggle hold") { toggle(0f, 0f) }
-                    if (p.element is StickElement || p.element is DpadElement) customActions = listOf(
+                    onClick(if (e is MacroElement) "Play or stop macro" else "Toggle hold") {
+                        if (e is MacroElement) { play(e); true } else toggle(0f, 0f)
+                    }
+                    if (e is StickElement || e is DpadElement) customActions = listOf(
                         CustomAccessibilityAction("Hold up or release") { toggle(0f, -1f) },
                         CustomAccessibilityAction("Hold down or release") { toggle(0f, 1f) },
                         CustomAccessibilityAction("Hold left or release") { toggle(-1f, 0f) },
@@ -203,9 +229,13 @@ fun PadScreen(transport: UdpTransport?, layout: ControllerLayout, modifier: Modi
                     )
                 }.focusable())
         }
-        Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer,
-            modifier = Modifier.align(Alignment.TopCenter).padding(4.dp)) {
-            Text("${layout.name} · $status", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(8.dp))
+        if (showStatus) GlassPanel(shape = RoundedCornerShape(24.dp),
+            modifier = Modifier.align(Alignment.TopCenter).padding(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val macro = layout.elements.filterIsInstance<MacroElement>().firstOrNull { it.id == playingId }
+                Text(if (macro != null) "Macro ${macro.label}" else "${layout.name} · $status", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(8.dp))
+                if (macro != null) TextButton(onClick = ::cancelMacro) { Text("Stop") }
+            }
         }
     }
 }
