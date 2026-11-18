@@ -82,6 +82,7 @@ data class StickElement(
     override val color: Long = 0xFFE0E4EC,
     val stick: Stick,
     val mode: StickMode = StickMode.JOYSTICK,
+    val touchAnywhere: Boolean = true,
     val touchpadSensitivity: Float = 1f,
     val touchpadDeadzoneCompensation: Float = 0.28f,
 ) : ControlElement
@@ -167,6 +168,7 @@ fun ControlElement.with(
     color: Long = this.color,
     id: String = this.id,
 ): ControlElement = when (this) {
+    is MacroElement -> copy(x = x, y = y, size = size, opacity = opacity, enabled = enabled, hidden = hidden, color = color, id = id)
     is ButtonElement -> copy(x = x, y = y, size = size, opacity = opacity, enabled = enabled, hidden = hidden, color = color, id = id)
     is TriggerElement -> copy(x = x, y = y, size = size, opacity = opacity, enabled = enabled, hidden = hidden, color = color, id = id)
     is StickElement -> copy(x = x, y = y, size = size, opacity = opacity, enabled = enabled, hidden = hidden, color = color, id = id)
