@@ -117,6 +117,7 @@ class TouchpadMotion(private var x: Float, private var y: Float, private var tim
     private var velocityX = 0f
     private var velocityY = 0f
     private var edgeHeld = false
+    internal val needsIdleCheck: Boolean get() = movedAt != Long.MIN_VALUE && !edgeHeld
     private fun clear() { movedAt = Long.MIN_VALUE; velocityX = 0f; velocityY = 0f; edgeHeld = false }
     fun move(nextX: Float, nextY: Float, now: Long, eventTime: Long = now) {
         if (!nextX.isFinite() || !nextY.isFinite() || eventTime < time) {
