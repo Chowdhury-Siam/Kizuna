@@ -1,3 +1,11 @@
+# Kizuna 1.1.4
+
+- Makes the layout editor use the same full-screen canvas as gameplay. Positions, sizes, and drag coordinates use the gameplay viewport.
+- Floats the editor toolbar at the bottom by default. Use the toolbar menu to move it to the opposite edge when it covers a control. The translucent inspector still opens from the top.
+- Shared version 1.1.4 with Android code 22.
+
+---
+
 # Kizuna 1.1.3
 
 - Improves dark and light contrast on Android, reduces the header height, and gives the bottom tabs their own space below the scroll area.
