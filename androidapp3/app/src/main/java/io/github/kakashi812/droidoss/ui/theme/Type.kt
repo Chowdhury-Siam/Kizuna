@@ -6,29 +6,20 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Set of Material typography styles to start with
+// System sans preserves language coverage; tighter metrics keep the glass interface compact.
+private fun type(size: Int, height: Int, weight: FontWeight = FontWeight.Normal, spacing: Float = 0f) =
+    TextStyle(fontFamily = FontFamily.SansSerif, fontSize = size.sp, lineHeight = height.sp,
+        fontWeight = weight, letterSpacing = spacing.sp)
+
 val Typography = Typography(
-    bodyLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
-        letterSpacing = 0.5.sp
-    )
-    /* Other default text styles to override
-    titleLarge = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
-        letterSpacing = 0.sp
-    ),
-    labelSmall = TextStyle(
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.5.sp
-    )
-    */
+    displaySmall = type(32, 38, FontWeight.SemiBold, -.9f),
+    headlineLarge = type(30, 36, FontWeight.SemiBold, -.8f),
+    headlineMedium = type(27, 33, FontWeight.SemiBold, -.6f),
+    headlineSmall = type(24, 30, FontWeight.SemiBold, -.5f),
+    titleLarge = type(21, 27, FontWeight.SemiBold, -.35f),
+    titleMedium = type(16, 22, FontWeight.SemiBold, -.15f),
+    titleSmall = type(14, 20, FontWeight.SemiBold, -.1f),
+    bodyLarge = type(15, 22), bodyMedium = type(14, 20), bodySmall = type(12, 18),
+    labelLarge = type(13, 18, FontWeight.Medium), labelMedium = type(12, 16, FontWeight.Medium),
+    labelSmall = type(11, 15, FontWeight.Medium, .15f),
 )
