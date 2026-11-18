@@ -21,8 +21,13 @@ fun ProfileSettingsScreen(initial: ControllerLayout, onSave: (ControllerLayout) 
     val context = LocalContext.current
     val focus = LocalFocusManager.current
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Tune ${profile.name}", style = MaterialTheme.typography.headlineSmall)
-        OutlinedTextField(profile.game, { profile = profile.copy(game = it.take(80)) }, label = { Text("Game / Steam title") }, modifier = Modifier.fillMaxWidth(),
+        GlassPanel(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(14.dp)) {
+                Text("INPUT & CALIBRATION", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Text(profile.name, style = MaterialTheme.typography.headlineSmall)
+            }
+        }
+        GlassTextField(profile.game, { profile = profile.copy(game = it.take(80)) }, label = { Text("Game / Steam title") }, modifier = Modifier.fillMaxWidth(),
             singleLine = true, keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }))
         Text("Choose Xbox 360 or PlayStation 4 output on the Windows dashboard. These settings change this profile's input.", style = MaterialTheme.typography.bodySmall)
@@ -32,7 +37,7 @@ fun ProfileSettingsScreen(initial: ControllerLayout, onSave: (ControllerLayout) 
             fun update(value: StickSettings) {
                 profile = profile.copy(input = if (side == Stick.LEFT) profile.input.copy(left = value) else profile.input.copy(right = value))
             }
-            ElevatedCard(Modifier.fillMaxWidth()) {
+            GlassCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp)) {
                     Text("${side.name.lowercase().replaceFirstChar { it.uppercase() }} stick", style = MaterialTheme.typography.titleMedium)
                     val control = profile.elements.filterIsInstance<StickElement>().firstOrNull { it.stick == side }
