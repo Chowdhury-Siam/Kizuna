@@ -11,7 +11,7 @@ import io.github.kakashi812.droidoss.update.AndroidUpdater
 
 @Composable
 fun UpdatePanel(updater: AndroidUpdater, automatic: Boolean, onAutomatic: (Boolean) -> Unit, onInstall: () -> Unit) {
-    Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+    GlassPanel(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("App updates", style = MaterialTheme.typography.titleSmall)
             Text(updater.status, style = MaterialTheme.typography.bodySmall)
