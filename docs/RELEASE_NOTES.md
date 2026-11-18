@@ -1,3 +1,12 @@
+# Kizuna 1.1.1
+
+- Both analog sticks keep their original center when a drag passes over another control. Input pauses over the control and resumes as soon as the finger leaves it.
+- Stick knobs now track input directly, including the return to center on release.
+- Touchpad gestures still reset their relative motion after crossing another control, so the blocked travel does not move the camera.
+- Shared version 1.1.1 with Android code 19.
+
+---
+
 # Kizuna 1.1.0
 
 - Redesigns Android and the Windows dashboard with an Apple-inspired glass theme: light/dark palettes, translucent gradient surfaces, rounded outlines, reflective highlights and compact typography.
