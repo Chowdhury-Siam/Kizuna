@@ -1,3 +1,26 @@
+# Kizuna 1.1.0
+
+- Redesigns Android and the Windows dashboard with an Apple-inspired glass theme: light/dark palettes, translucent gradient surfaces, rounded outlines, reflective highlights and compact typography.
+- Introduces floating Connect / Profiles / Settings navigation, retains the chosen section when returning from editors, and keeps discovery, player selection, imports/exports, calibration, macros and updates reachable.
+- Restyles dialogs, fields, choice pills, profile cards, the translucent top inspector, editor toolbar, macro recorder and update panel with shared glass components.
+- Draws glass controller buttons, D-pad tiles, stick bases/knobs and touchpads, retaining custom colors and scaling longer labels to fit.
+- Restyles Windows player/connection/update/error panels, buttons, switches and the header. Adds static ambient highlights and supported system-frame rounding.
+- Uses cached/static gradients rather than live desktop capture or per-frame full-screen blur. Input routing, macro recording/replay, profile data, game defaults, protocol and Xbox/PlayStation backend are unchanged.
+- Shared version 1.1.0; Android code 18.
+
+---
+
+# Kizuna 1.0.10
+
+- Adds side-wide floating stick gestures: empty left/right space routes to the corresponding stick, with a per-stick switch and visual anchor at touchdown.
+- Gives button/trigger/D-pad/macro footprints priority. Buttons never fall through into a side gesture; captured sticks pause over controls and rebase on exit, while retaining touchpad edge turns in empty space.
+- Adds per-profile recorded macro buttons, capturing timed buttons/combinations, analog triggers and both sticks. Replay is one-shot, cancellable and merged with manual holds/axis priority.
+- Adds Controls → Add macro, a full-pad local recorder, editing/preview/re-record/clear/delete, and persistence through copy/undo/redo/import/export. Four macros per profile, each up to 30 seconds / 4,096 snapshots.
+- Bumps sharing/store formats to 4 with older-layout import support. Existing settings/ids, all 58 game defaults, translucent top inspector and PlayStation output remain available.
+- Version 1.0.10; Android code 17.
+
+---
+
 # Kizuna 1.0.9
 
 - Fixes the Android editor compile error by explicitly calling the top-level AnimatedVisibility overload. The enclosing ColumnScope previously shadowed it from inside BoxWithConstraints.
