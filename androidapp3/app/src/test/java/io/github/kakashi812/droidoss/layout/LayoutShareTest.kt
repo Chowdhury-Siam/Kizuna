@@ -46,7 +46,7 @@ class LayoutShareTest {
         val file = LayoutShare.encodeFile(racing)
 
         assertTrue(file.contains("\"format\": \"droidoss-layout\""))
-        assertTrue(file.contains("\"version\": 3"))
+        assertTrue(file.contains("\"version\": ${LayoutShare.VERSION}"))
         assertTrue(!file.contains("custom4"))
     }
 
@@ -91,9 +91,9 @@ class LayoutShareTest {
 
     @Test
     fun `a layout from a newer app says so`() {
-        val newer = LayoutShare.encodeFile(racing).replace("\"version\": 3", "\"version\": 4")
+        val newer = LayoutShare.encodeFile(racing).replace("\"version\": ${LayoutShare.VERSION}", "\"version\": ${LayoutShare.VERSION + 1}")
         assertTrue(invalid(LayoutShare.decode(newer)).contains("newer"))
-        assertTrue(invalid(LayoutShare.decode("DROIDOSS4:abc")).contains("newer"))
+        assertTrue(invalid(LayoutShare.decode("DROIDOSS${LayoutShare.VERSION + 1}:abc")).contains("newer"))
     }
 
     @Test
@@ -105,9 +105,9 @@ class LayoutShareTest {
 
     @Test
     fun `a compression bomb is refused`() {
-        // A megabyte of spaces deflates to about a kilobyte.
+        // A payload beyond the inflated-size limit must be rejected even when it compresses well.
         val deflater = Deflater(Deflater.BEST_COMPRESSION, true)
-        deflater.setInput(ByteArray(1_000_000) { ' '.code.toByte() })
+        deflater.setInput(ByteArray(LayoutShare.MAX_INPUT_BYTES + 1) { ' '.code.toByte() })
         deflater.finish()
         val out = ByteArrayOutputStream()
         val chunk = ByteArray(1024)
