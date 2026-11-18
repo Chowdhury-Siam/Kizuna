@@ -54,16 +54,16 @@ sealed interface ImportResult {
 object LayoutShare {
 
     const val FORMAT = "droidoss-layout"
-    const val VERSION = 3
+    const val VERSION = 4
 
     /** Starts the text in a QR code; the digit is the sharing [VERSION]. */
-    const val QR_PREFIX = "DROIDOSS3:"
+    const val QR_PREFIX = "DROIDOSS4:"
 
     /** File extension for exported layouts. Ends in .json so any app can open it. */
     const val FILE_EXTENSION = ".kizuna.json"
 
-    /** A real layout is a few KB; anything far beyond that is not one. */
-    const val MAX_INPUT_BYTES = 64 * 1024
+    /** Bounded room for four 30-second recordings; inflated QR data uses the same cap. */
+    const val MAX_INPUT_BYTES = 8 * 1024 * 1024
 
     /** More controls than any pad needs, few enough that the pad stays responsive. */
     const val MAX_ELEMENTS = 48
@@ -145,7 +145,7 @@ object LayoutShare {
         if (trimmed.length > MAX_INPUT_BYTES) return Invalid("This file is too big to be a Kizuna layout.")
 
         val jsonText = when {
-            (trimmed.startsWith(QR_PREFIX) || trimmed.startsWith("DROIDOSS1:") || trimmed.startsWith("DROIDOSS2:")) -> unpackQr(trimmed.substringAfter(":"))
+            (trimmed.startsWith(QR_PREFIX) || trimmed.startsWith("DROIDOSS1:") || trimmed.startsWith("DROIDOSS2:") || trimmed.startsWith("DROIDOSS3:")) -> unpackQr(trimmed.substringAfter(":"))
                 ?: return Invalid("This QR code is damaged or incomplete. Try scanning it again.")
             // A QR from a newer app: same prefix, higher digit.
             trimmed.startsWith("DROIDOSS") -> return tooNew()
@@ -204,6 +204,7 @@ object LayoutShare {
     private fun validate(shared: SharedLayout): ImportResult {
         val elements = shared.elements
         if (elements.isEmpty()) return Invalid("This layout has no controls in it.")
+        if (elements.count { it is MacroElement } > MAX_MACROS) return Invalid("This layout has too many macros.")
         if (elements.size > MAX_ELEMENTS) return Invalid("This layout has too many controls to be a Kizuna layout.")
 
         val ids = mutableSetOf<String>()
@@ -222,6 +223,10 @@ object LayoutShare {
                 color = element.color.coerceIn(0xFF000000, 0xFFFFFFFF),
             )
             when (placed) {
+                is MacroElement -> {
+                    if (!placed.validRecording()) return Invalid("This macro recording is damaged or exceeds its limits.")
+                    placed.copy(label = placed.label.trim().take(MAX_LABEL_LENGTH).ifEmpty { "Macro" })
+                }
                 is ButtonElement -> {
                     if (placed.mask !in BUTTON_MASKS) return notALayout()
                     placed.copy(label = placed.label.take(MAX_LABEL_LENGTH))
