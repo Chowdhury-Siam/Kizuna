@@ -13,8 +13,8 @@ import io.github.kakashi812.droidoss.update.AndroidUpdater
 fun UpdatePanel(updater: AndroidUpdater, automatic: Boolean, onAutomatic: (Boolean) -> Unit, onInstall: () -> Unit) {
     GlassPanel(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("App updates", style = MaterialTheme.typography.titleSmall)
-            Text(updater.status, style = MaterialTheme.typography.bodySmall)
+            Text("App updates", style = MaterialTheme.typography.titleMedium)
+            Text(updater.status, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             updater.progress?.let { LinearProgressIndicator(progress = { it }, modifier = Modifier.fillMaxWidth()) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Check automatically", style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
