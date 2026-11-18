@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import io.github.kakashi812.droidoss.layout.ControllerButtons
@@ -160,6 +161,7 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(LocalControllerButtons provides if (playStationButtons) ControllerButtons.PLAYSTATION else ControllerButtons.XBOX) {
                 KizunaTheme(themeMode = themeMode) {
                     val activeLayout = layouts.firstOrNull { it.id == activeId } ?: defaultLayout()
+                    var homeSection by rememberSaveable { mutableStateOf(0) }
 
                     when {
                         // Live play takes precedence over everything.
@@ -178,7 +180,7 @@ class MainActivity : ComponentActivity() {
                         tuningId != null -> {
                             val profile = layouts.firstOrNull { it.id == tuningId } ?: defaultLayout()
                             BackHandler { tuningId = null }
-                            Scaffold { padding ->
+                            Scaffold(containerColor = androidx.compose.ui.graphics.Color.Transparent) { padding ->
                                 androidx.compose.foundation.layout.Box(Modifier.padding(padding)) {
                                     ProfileSettingsScreen(profile, onSave = {
                                         if (saveProfile(it)) tuningId = null
@@ -217,7 +219,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         else -> {
-                            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                            Scaffold(modifier = Modifier.fillMaxSize(), containerColor = androidx.compose.ui.graphics.Color.Transparent) { innerPadding ->
                                 ConnectScreen(
                                     connectionState = connectionState,
                                     initialHost = settings.host,
@@ -232,6 +234,8 @@ class MainActivity : ComponentActivity() {
                                     initialDeviceName = settings.deviceName,
                                     initialSlot = settings.preferredSlot,
                                     themeMode = themeMode,
+                                    initialSection = homeSection,
+                                    onSectionChanged = { homeSection = it },
                                     playStationButtons = playStationButtons,
                                     onControllerButtons = { playStationButtons = it; settings.playStationButtons = it },
                                     onDeviceName = { settings.deviceName = it },
