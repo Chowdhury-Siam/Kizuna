@@ -24,12 +24,11 @@ data class PadRoutingSnapshot(
     val triggers: Set<Trigger> = emptySet(),
 )
 
-/** Pointer ownership is fixed at touchdown. Buttons never fall through into a side gesture. */
+/** Hit-test buttons before sticks at touchdown. Captured sticks keep their pointer until release. */
 class PadTouchRouter(private val targets: List<TouchTarget>, private val width: Float, private val minimum: Float) {
     private class Gesture(var target: TouchTarget?, val stickGesture: Boolean, val floating: Boolean,
-        var anchorX: Float, var anchorY: Float) {
+        val anchorX: Float, val anchorY: Float) {
         val buttonGesture = target != null && !stickGesture
-        var blocked = false
         var motion: TouchpadMotion? = null
         var output: ControlTouch? = null
         var knob = TouchPoint(0f, 0f)
@@ -81,21 +80,7 @@ class PadTouchRouter(private val targets: List<TouchTarget>, private val width: 
         val target = g.target ?: return
         if (!g.stickGesture) return
         val stick = target.element as StickElement
-        // Button footprints pause either stick without transferring its pointer or firing the button.
-        if (buttonAt(x, y) != null) {
-            g.output = null
-            g.blocked = true
-            g.motion = null
-            g.knob = TouchPoint(0f, 0f)
-            return
-        }
-        if (g.blocked && stick.mode == StickMode.TOUCHPAD) {
-            // Restart relative camera motion without counting travel over the button.
-            g.anchorX = x
-            g.anchorY = y
-        }
-        g.blocked = false
-        // Analog sticks always measure from the original centre of the drag.
+        // The drag keeps its centre and can cross other controls without pressing them.
         val dx = (x - g.anchorX) / target.radius; val dy = (y - g.anchorY) / target.radius
         if (stick.mode == StickMode.TOUCHPAD) {
             val motion = g.motion ?: TouchpadMotion(dx, dy, eventTime).also { g.motion = it }
@@ -112,7 +97,7 @@ class PadTouchRouter(private val targets: List<TouchTarget>, private val width: 
     fun sample(now: Long): Boolean {
         var changed = false
         gestures.values.forEach { g ->
-            if (!g.blocked) g.motion?.let {
+            g.motion?.let {
                 val next = it.sample(g.target!!.element.id, now)
                 if (next != g.output) { g.output = next; changed = true }
             }
