@@ -134,6 +134,7 @@ fun LayoutEditorScreen(
                         val placed = elements.place(w, h)
                         val labels = rememberControlLabels(placed)
                         val foreground = palette.onBackground
+                        val paints = rememberControlPaints(placed, foreground)
                         val primary = palette.primary
                         fun hit(position: Offset) = elements.place(w, h).lastOrNull { !it.element.hidden && it.contains(position, minimumHit) }
                         Canvas(Modifier.fillMaxSize().semantics { contentDescription = "Layout preview" }
@@ -168,7 +169,7 @@ fun LayoutEditorScreen(
                                 drawLine(foreground.copy(alpha = 0.07f), Offset(0f, h * step / 20), Offset(w, h * step / 20))
                             }
                             placed.filter { !it.element.hidden }.forEach { p ->
-                                drawControl(p, emptyMap(), emptyMap(), labels, foreground)
+                                drawControl(p, paints.getValue(p.element.id), labels[p.element.id])
                                 if (p.element.id == selectedId) {
                                     if (p.element is StickElement && p.element.mode == StickMode.TOUCHPAD)
                                         drawRoundRect(primary, p.centre - Offset(p.radius + 4, p.radius * 0.7f + 4),
