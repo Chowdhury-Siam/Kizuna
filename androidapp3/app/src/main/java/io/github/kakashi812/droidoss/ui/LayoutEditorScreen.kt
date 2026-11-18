@@ -54,6 +54,7 @@ fun LayoutEditorScreen(
     var selectedId by remember(initial) { mutableStateOf<String?>(null) }
     var inspector by remember { mutableStateOf(false) }
     var picker by remember { mutableStateOf(false) }
+    var recordMacroId by remember { mutableStateOf<String?>(null) }
     var tab by remember { mutableIntStateOf(0) }
     var menu by remember { mutableStateOf(false) }
     var resetDialog by remember { mutableStateOf(false) }
@@ -77,7 +78,7 @@ fun LayoutEditorScreen(
         sliderEditing = false
         inspector = false
     }
-    BoxWithConstraints(modifier.fillMaxSize().background(palette.background)) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
         val aspect = maxWidth.value / maxHeight.value.coerceAtLeast(1f)
         val wide = maxWidth >= 600.dp
         fun positioned(e: ControlElement, x: Float = e.x, y: Float = e.y, size: Float = e.size): ControlElement {
@@ -86,7 +87,7 @@ fun LayoutEditorScreen(
             return e.with(x = x.coerceIn(radius, 1f - radius), y = y.coerceIn(ry, 1f - ry), size = size)
         }
         Column(Modifier.fillMaxSize()) {
-            Surface(color = palette.surfaceContainer, tonalElevation = 1.dp) {
+            GlassPanel(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp), shape = RoundedCornerShape(24.dp)) {
                 Column {
                     Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         EditorIcon("‹", "Cancel editing", onClick = onCancel)
@@ -124,7 +125,7 @@ fun LayoutEditorScreen(
             BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
                 val panelWidth = minOf(360.dp, if (wide) maxWidth * 0.44f else maxWidth - 16.dp)
                 val panelHeight = minOf(360.dp, maxHeight * 0.72f)
-                Box(Modifier.fillMaxSize().background(palette.surfaceContainerLowest), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     // The preview keeps the same bounds when the inspector opens or closes.
                     BoxWithConstraints(Modifier.aspectRatio(aspect)) {
                         val w = constraints.maxWidth.toFloat()
@@ -200,16 +201,33 @@ fun LayoutEditorScreen(
                                 val copy = positioned(selected.with(id = UUID.randomUUID().toString().take(32)), x = selected.x + 0.04f)
                                 elements.add(copy); selectedId = copy.id
                             }
-                        }, canDuplicate = elements.size < LayoutShare.MAX_ELEMENTS,
+                        }, canDuplicate = elements.size < LayoutShare.MAX_ELEMENTS && (selected !is MacroElement || elements.count { it is MacroElement } < MAX_MACROS),
                         reset = { action { change(selected.id) { original -> initial.elements.firstOrNull { it.id == original.id }
                             ?: defaultLayout().elements.firstOrNull { it.id == original.id } ?: original.with(size = 0.1f, opacity = 0.85f, hidden = false) } } },
+                        record = { recordMacroId = selected.id },
+                        delete = { action { elements.remove(selected); selectedId = null; inspector = false } },
                     )
                 }
             }
         }
     }
-    if (picker) AlertDialog(onDismissRequest = { picker = false }, title = { Text("Choose a control") }, confirmButton = {
-        TextButton(onClick = { picker = false }) { Text("Close") }
+    recordMacroId?.let { id ->
+        MacroRecordDialog(initial.copy(elements = elements.toList()), onRecorded = { frames ->
+            action { change(id) { (it as MacroElement).copy(frames = frames) } }
+            recordMacroId = null
+        }, onCancel = { recordMacroId = null })
+    }
+    if (picker) GlassAlertDialog(onDismissRequest = { picker = false }, title = { Text("Choose a control") }, confirmButton = {
+        Row {
+            TextButton(onClick = {
+                action {
+                    val macro = MacroElement(UUID.randomUUID().toString().take(32), label = "M${elements.count { it is MacroElement } + 1}")
+                    elements.add(macro); selectedId = macro.id
+                }
+                picker = false; inspector = true; tab = 1
+            }, enabled = elements.size < LayoutShare.MAX_ELEMENTS && elements.count { it is MacroElement } < MAX_MACROS) { Text("Add macro") }
+            TextButton(onClick = { picker = false }) { Text("Close") }
+        }
     }, text = {
         Column(Modifier.heightIn(max = 300.dp).verticalScroll(rememberScrollState())) {
             elements.forEachIndexed { index, e ->
@@ -218,12 +236,13 @@ fun LayoutEditorScreen(
                 ListItem(headlineContent = { Text(if (ordinal > 1) "$name · $ordinal" else name) },
                     supportingContent = { Text(if (e.hidden) "Hidden" else controlKind(e)) },
                     trailingContent = { RadioButton(selected = e.id == selectedId, onClick = null) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                     modifier = Modifier.clickable { selectedId = e.id; inspector = true; picker = false },
                 )
             }
         }
     })
-    if (resetDialog) AlertDialog(onDismissRequest = { resetDialog = false }, title = { Text("Reset layout?") },
+    if (resetDialog) GlassAlertDialog(onDismissRequest = { resetDialog = false }, title = { Text("Reset layout?") },
         text = { Text("Restore the default controls. You can undo this change.") },
         confirmButton = { TextButton(onClick = { action { restore(defaultLayout().elements) }; selectedId = null; inspector = false; resetDialog = false }) { Text("Reset") } },
         dismissButton = { TextButton(onClick = { resetDialog = false }) { Text("Cancel") } })
@@ -236,15 +255,10 @@ private fun Inspector(
     slider: ((ControlElement) -> ControlElement) -> Unit, finished: () -> Unit,
     resize: (Float) -> Unit, move: (Float?, Float?) -> Unit, align: (Float?, Float?) -> Unit,
     layer: (Boolean) -> Unit, duplicate: () -> Unit, canDuplicate: Boolean, reset: () -> Unit,
+    record: () -> Unit, delete: () -> Unit,
 ) {
     val controllerButtons = LocalControllerButtons.current
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.78f),
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
-        modifier = modifier,
-    ) {
+    GlassPanel(modifier = modifier, shape = RoundedCornerShape(24.dp)) {
         Column {
             Row(Modifier.fillMaxWidth().padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -276,6 +290,14 @@ private fun Inspector(
                         }
                     }
                     1 -> when (selected) {
+                        is MacroElement -> {
+                            GlassTextField(selected.label, { value -> change { (it as MacroElement).copy(label = value.take(6)) } },
+                                label = { Text("Macro button name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                            Text(if (selected.frames.isEmpty()) "No actions recorded" else "%.1fs · %d steps".format(selected.frames.last().atMs / 1000f, selected.frames.size), style = MaterialTheme.typography.bodySmall)
+                            Button(onClick = record, modifier = Modifier.fillMaxWidth()) { Text(if (selected.frames.isEmpty()) "Record actions" else "Record again") }
+                            Text("Record buttons, triggers and stick movement. Tap this button once to replay; tap again to stop.", style = MaterialTheme.typography.bodySmall)
+                            if (selected.frames.isNotEmpty()) TextButton(onClick = { change { (it as MacroElement).copy(frames = emptyList()) } }) { Text("Clear recording") }
+                        }
                         is StickElement -> {
                             StickModeSelector(selected, onChange = { value -> change { value } })
                             if (selected.mode == StickMode.TOUCHPAD) {
@@ -285,10 +307,10 @@ private fun Inspector(
                                     "${(selected.touchpadDeadzoneCompensation * 100).roundToInt()}%",
                                     { value -> slider { (it as StickElement).copy(touchpadDeadzoneCompensation = value) } }, finished)
                                 Text((if (selected.stick == Stick.RIGHT) "Swipe to look around. " else "Swipe to move. ") + "Swipe to an edge and hold to keep turning. Swipe inward to adjust; lift to stop. Raise sensitivity for faster response.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            } else Text("A fixed joystick with your profile's deadzone and response curve.", style = MaterialTheme.typography.bodySmall)
+                            } else Text("A joystick with your profile's deadzone and response curve. Empty-space drags use this side when enabled.", style = MaterialTheme.typography.bodySmall)
                             Text("Output stick", style = MaterialTheme.typography.labelLarge)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Stick.entries.forEach { stick -> FilterChip(selected = selected.stick == stick, onClick = { change { (it as StickElement).copy(stick = stick) } }, label = { Text(if (stick == Stick.LEFT) "Left" else "Right") }) }
+                                Stick.entries.forEach { stick -> GlassChoice(selected = selected.stick == stick, onClick = { change { (it as StickElement).copy(stick = stick) } }, label = { Text(if (stick == Stick.LEFT) "Left" else "Right") }) }
                             }
                         }
                         is ButtonElement -> {
@@ -304,14 +326,14 @@ private fun Inspector(
                         is TriggerElement -> {
                             Text("Trigger output", style = MaterialTheme.typography.labelLarge)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Trigger.entries.forEach { trigger ->
-                                FilterChip(selected = selected.trigger == trigger, onClick = { change { (it as TriggerElement).copy(trigger = trigger, label = if (trigger == Trigger.LEFT) "LT" else "RT") } }, label = { Text(if (trigger == Trigger.LEFT) "Left" else "Right") })
+                                GlassChoice(selected = selected.trigger == trigger, onClick = { change { (it as TriggerElement).copy(trigger = trigger, label = if (trigger == Trigger.LEFT) "LT" else "RT") } }, label = { Text(if (trigger == Trigger.LEFT) "Left" else "Right") })
                             } }
                         }
                         is DpadElement -> {
                             Text("Directions", style = MaterialTheme.typography.labelLarge)
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf(false to "4-way", true to "8-way").forEach { (diagonals, label) ->
-                                    FilterChip(selected = selected.diagonals == diagonals,
+                                    GlassChoice(selected = selected.diagonals == diagonals,
                                         onClick = { change { (it as DpadElement).copy(diagonals = diagonals) } }, label = { Text(label) })
                                 }
                             }
@@ -332,11 +354,12 @@ private fun Inspector(
                             OutlinedButton(onClick = { layer(false) }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(4.dp)) { Text("Send back") }
                             OutlinedButton(onClick = { layer(true) }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(4.dp)) { Text("Bring front") }
                         }
-                        Text("Where controls overlap, the front layer receives touches.", style = MaterialTheme.typography.bodySmall)
+                        Text("Buttons take priority over side drags and overlapping sticks. Other overlaps use the front layer.", style = MaterialTheme.typography.bodySmall)
                         TextButton(onClick = duplicate, enabled = canDuplicate, modifier = Modifier.fillMaxWidth()) { Text("Duplicate control") }
                         TextButton(onClick = reset, modifier = Modifier.fillMaxWidth()) { Text("Reset this control") }
                     }
                 }
+                if (selected is MacroElement) TextButton(onClick = delete, modifier = Modifier.fillMaxWidth()) { Text("Delete macro") }
                 if (selected.hidden) Text("Hidden from play. Restore it here or from Controls.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
             }
         }
@@ -345,10 +368,14 @@ private fun Inspector(
 
 @Composable
 internal fun StickModeSelector(stick: StickElement, onChange: (StickElement) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text("Drag anywhere on this side", Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
+        Switch(checked = stick.touchAnywhere, onCheckedChange = { onChange(stick.copy(touchAnywhere = it)) })
+    }
     Text("Control mode", style = MaterialTheme.typography.labelLarge)
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         StickMode.entries.forEach { mode ->
-            FilterChip(selected = stick.mode == mode, onClick = { onChange(stick.copy(mode = mode)) },
+            GlassChoice(selected = stick.mode == mode, onClick = { onChange(stick.copy(mode = mode)) },
                 label = { Text(if (mode == StickMode.JOYSTICK) "Joystick" else "Touchpad") }, modifier = Modifier.weight(1f))
         }
     }
@@ -380,12 +407,14 @@ private fun EditorSlider(label: String, value: Float, range: ClosedFloatingPoint
 internal fun controlName(e: ControlElement, controllerButtons: ControllerButtons = ControllerButtons.XBOX): String = when (e) {
     is StickElement -> if (e.stick == Stick.LEFT) "Left stick" else "Right stick"
     is DpadElement -> "D-pad"
+    is MacroElement -> "Macro ${e.label}"
     is TriggerElement -> if (controllerButtons == ControllerButtons.PLAYSTATION) controllerButtons.label(e)!! else if (e.trigger == Trigger.LEFT) "Left trigger" else "Right trigger"
     is ButtonElement -> if (controllerButtons == ControllerButtons.PLAYSTATION) controllerButtons.label(e, spoken = true)!! else when (e.mask) { 0x10 -> "Start"; 0x20 -> "Back"; 0x40 -> "Left stick click"; 0x80 -> "Right stick click"; 0x100 -> "Left shoulder"; 0x200 -> "Right shoulder"; else -> e.label }
 }
 private fun controlKind(e: ControlElement): String = when (e) {
     is StickElement -> if (e.mode == StickMode.TOUCHPAD) "Relative touchpad" else "Analog joystick"
     is DpadElement -> "Directional pad"
+    is MacroElement -> "Recorded action sequence"
     is TriggerElement -> "Trigger"
     is ButtonElement -> "Button"
 }
