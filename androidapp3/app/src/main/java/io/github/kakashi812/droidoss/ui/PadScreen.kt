@@ -25,10 +25,8 @@ import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
@@ -139,8 +137,14 @@ fun PadScreen(
         val controllerButtons = LocalControllerButtons.current
         val ink = MaterialTheme.colorScheme.onBackground
         val visualScale = placed.associate { p ->
-            val scale by animateFloatAsState(if (p.element !is DpadElement && pressed[p.element.id] == true) .93f else 1f,
-                animationSpec = spring(dampingRatio = .65f, stiffness = 700f), label = "Control press")
+            val scale = when (p.element) {
+                is StickElement, is DpadElement -> 1f
+                else -> {
+                    val animated by animateFloatAsState(if (pressed[p.element.id] == true) .93f else 1f,
+                        animationSpec = spring(dampingRatio = .65f, stiffness = 700f), label = "Control press")
+                    animated
+                }
+            }
             p.element.id to scale
         }
         val visualKnobs = placed.associate { p ->
@@ -149,8 +153,8 @@ fun PadScreen(
                 Offset((if (left) displayState.thumbLX else displayState.thumbRX) / 32767f,
                     -(if (left) displayState.thumbLY else displayState.thumbRY) / 32767f) * p.radius
             } else Offset.Zero
-            val raw = routing.knobs[p.element.id]?.let { Offset(it.x, it.y) } ?: accessible[p.element.id]?.let { Offset(it.x, it.y) * p.radius } ?: replay
-            val offset by animateOffsetAsState(raw, animationSpec = spring(dampingRatio = .8f, stiffness = 1000f), label = "Stick return")
+            val offset = routing.knobs[p.element.id]?.let { Offset(it.x, it.y) }
+                ?: accessible[p.element.id]?.let { Offset(it.x, it.y) * p.radius } ?: replay
             p.element.id to offset
         }
         val visualPlaced = placed.map { p -> routing.floatingCentres[p.element.id]?.let { p.copy(centre = Offset(it.x, it.y)) } ?: p }
