@@ -64,6 +64,7 @@ fun mixInput(layout: ControllerLayout, touches: Collection<ControlTouch>): PadSt
     for (touch in touches) {
         val e = layout.elements.firstOrNull { it.id == touch.id && it.enabled && !it.hidden } ?: continue
         when (e) {
+            is MacroElement -> Unit // Playback is mixed separately from live touches.
             is ButtonElement -> result.setButton(e.mask, true)
             is TriggerElement -> {
                 val value = layout.input.trigger((1f - touch.y) / 2f)
