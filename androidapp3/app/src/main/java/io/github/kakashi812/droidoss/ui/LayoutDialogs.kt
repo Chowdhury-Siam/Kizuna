@@ -59,7 +59,7 @@ fun QrDialog(layout: ControllerLayout, payload: String, onDismiss: () -> Unit) {
         }.getOrNull()
     }
 
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(layout.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         text = {
@@ -124,7 +124,7 @@ fun ImportDialog(
     onReplace: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Import \"$name\"?", maxLines = 2, overflow = TextOverflow.Ellipsis) },
         text = {
@@ -159,7 +159,7 @@ fun ImportDialog(
 /** Shown when an incoming file or code could not be used. */
 @Composable
 fun ImportErrorDialog(message: String, onDismiss: () -> Unit) {
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Couldn't import") },
         text = { Text(message) },
@@ -169,7 +169,7 @@ fun ImportErrorDialog(message: String, onDismiss: () -> Unit) {
 
 @Composable
 fun DeleteDialog(name: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Delete \"$name\"?", maxLines = 2, overflow = TextOverflow.Ellipsis) },
         text = { Text("This can't be undone. Share or save it first if you might want it back.") },
