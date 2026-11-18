@@ -94,6 +94,11 @@ class PadTouchRouter(private val targets: List<TouchTarget>, private val width: 
         }
     }
 
+    val needsSampling: Boolean
+        get() = gestures.values.any { gesture ->
+            gesture.motion?.needsIdleCheck == true && gesture.output?.let { it.x != 0f || it.y != 0f } == true
+        }
+
     fun sample(now: Long): Boolean {
         var changed = false
         gestures.values.forEach { g ->
