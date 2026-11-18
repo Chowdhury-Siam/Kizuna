@@ -48,6 +48,35 @@ Kizuna continues the droidOSS codebase with a new identity, an original mint-and
 
 ---
 
+## Glass interface
+
+Kizuna uses an Apple-inspired glass design on Android and the Windows dashboard, with coordinated light/dark palettes, translucent layered panels, soft highlights, rounded controls and compact typography. It uses original app artwork and system fonts.
+
+The phone's floating navigation separates **Connect**, **Profiles** and **Settings**. Connect contains discovery, direct connection and player slots. Profiles contains all presets, editing, calibration, imports, exports, previews and macros. Settings contains appearance, Xbox/PlayStation button labels, device name and updates. Returning from an editor keeps the chosen section; Back from Profiles/Settings returns to Connect.
+
+The live pad has reflective glass buttons, D-pad tiles, stick bases and knobs. Longer labels scale down to fit their controls. The editor keeps its translucent top inspector and floating toolbar; macro recording, dialogs, inputs and choice pills use the same materials. QR codes remain black on white for reliable scanning.
+
+Windows uses translucent gradient panels, subtle background glows, pill buttons with hover/press/focus states, coordinated connection/player cards and the same light/dark colors. Supported Windows versions round the window frame; other versions retain their system frame.
+
+Glass depth comes from cached backdrop gradients and highlights. It does not capture or blur the desktop, and it avoids repeated full-screen blur passes on the live controller. Device frame rate, contrast and screen-reader behavior still require a real-device review for this version.
+
+## Side-wide sticks and recorded macros
+
+Drag empty space on the **left half** to control the left stick, or on the **right half** to control the right stick. The stick anchors where the finger lands, starts neutral, and returns to its saved position after release. Its saved sensitivity, deadzone, response curve and joystick/touchpad mode still apply. Each stick's **Input → Drag anywhere on this side** switch can turn this off.
+
+Buttons, triggers, the D-pad and macro buttons have priority over sticks, including overlaps. Sliding a button touch into empty space never starts a stick. A captured stick pauses when its finger enters another control's touch area, without pressing that control; moving back into empty space resets the anchor before further motion. Touchpad edge turning still works in empty space. Separate fingers can control both sticks and other controls; one finger owns each stick until lift or cancellation.
+
+To make a one-tap action sequence:
+
+1. Edit a saved game profile, open **Controls → Add macro**, then choose **Record actions** in its Input tab.
+2. Perform the button presses, combinations, trigger travel and stick movement on the recording pad. Recording happens locally and sends nothing to the PC. Leading idle time is skipped; holds and gaps after the first action keep their timing.
+3. Tap **Stop & use**, position/style/name the macro button, then **Save** the profile. Up to four macro buttons can be saved per profile, each limited to 30 seconds / 4,096 snapshots.
+4. Tap its button to replay once. Tap it again or use **Stop** in the pad's status bar to cancel. Pressing another macro replaces the current one. You can test replay in the profile's Preview without connecting to a PC.
+
+Manual buttons remain held if a macro releases them; a held manual D-pad direction takes priority over replay directions. An actively touched stick or trigger takes priority over that replay axis, even when neutral. Finishing, cancelling, leaving the pad, disconnecting or losing the screen releases replay input. Macros store the calibrated output so replay does not apply sensitivity twice. Both Xbox and PlayStation output use the same recordings.
+
+Macro buttons can be recolored, resized, moved, hidden, duplicated, cleared, re-recorded or deleted in the editor. Undo/redo includes macro changes. File sharing and QR exports include recordings; a sequence too large for a QR code shows the existing file-sharing fallback. Sharing format 4 accepts older format 1–3 layouts, and existing profile ids/input tuning are retained on upgrade.
+
 ## PlayStation controller
 
 1. Disconnect any phones, then click **Controller: Xbox 360** on the Windows dashboard to switch to **Controller: PlayStation 4**. The server restarts in the selected mode and remembers it for next time. All connected player slots use the selected type.
@@ -130,7 +159,7 @@ Open **Game profiles → Game presets**. Search by title or filter **Football**,
 - **Resident Evil**: classic and HD titles, numbered modern games through Requiem, remakes, Revelations and selected spin-offs. Aim profiles enlarge the right-stick area and reduce its gain for finer motion.
 - **Steam genres**: Standard, Racing, Shooter and Platformer. Racing enables sliding analog triggers.
 
-These are tuned **starting profiles**, not game patches, macros, automatic game detection or guaranteed game-specific bindings. Keep the game's standard Xbox controls, then adjust in-game sensitivity and Kizuna settings to taste. Older PC ports and console-only classics can require a Steam Input keyboard/legacy template or emulator mapping; each affected preset shows guidance. Mobile-only games are not controlled directly by this PC gamepad.
+These are tuned **starting profiles**, with no recorded macros built in. They do not patch games, detect games automatically or guarantee edition-specific bindings. Keep the game's standard Xbox controls, then adjust in-game sensitivity and Kizuna settings to taste. Older PC ports and console-only classics can require a Steam Input keyboard/legacy template or emulator mapping; each affected preset shows guidance. Mobile-only games are not controlled directly by this PC gamepad.
 
 See [the preset guide](docs/GAME_PRESETS.md) for control behavior and compatibility notes. No commercial game's artwork or logo is bundled.
 
@@ -146,7 +175,7 @@ For the D-pad, choose **D-pad → Input** to select **4-way** or **8-way** and a
 
 The inspector uses slim sliders with 48 dp touch targets. Visibility is in its header; **Duplicate control** and **Reset this control** are under Arrange.
 
-For a touchpad, choose either stick → **Input → Touchpad**. Set sensitivity from **0.25× to 16×**. Right-stick swipes control the game camera. Swipe anywhere inside the pad for relative aiming. **Swipe to an edge and hold to keep turning**, including when the captured finger travels beyond the pad; swipe inward for adjustments or lift to stop. Touching down at an edge alone stays neutral. Edge turns follow the swipe direction, with small jitter filtered. The finger stays assigned to the touchpad until lift, so crossing onto a neighboring button cannot press it. Version 1.0.6 doubles swipe-velocity gain at every saved sensitivity and lowers the movement threshold for slow adjustments; the slider still saves independently per control/profile. **Game deadzone compensation** starts at **28%**, adjustable from 0–60%, and lifts moving output past a game's neutral threshold. Holding still in the interior, lifting or cancelling releases the output. Output remains bounded by the existing XInput stick range. Once Windows diagnostics shows full travel, the game determines the maximum camera turn rate; adjust its controller-camera setting if available.
+For a touchpad, choose either stick → **Input → Touchpad**. Set sensitivity from **0.25× to 16×**. Right-stick swipes control the game camera. Swipe anywhere inside the pad for relative aiming. **Swipe to an edge and hold to keep turning**, including when the captured finger travels beyond the pad; swipe inward for adjustments or lift to stop. Touching down at an edge alone stays neutral. Edge turns follow the swipe direction, with small jitter filtered. The finger stays assigned to the touchpad until lift, so crossing onto a neighboring button cannot press it. Version 1.0.6 doubles swipe-velocity gain at every saved sensitivity and lowers the movement threshold for slow adjustments; the slider still saves independently per control/profile. **Game deadzone compensation** uses each game preset's saved default (28% for a generic layout), adjustable from 0–60%, and lifts moving output past a game's neutral threshold. Holding still in the interior, lifting or cancelling releases the output. Output remains bounded by the existing XInput stick range. Once Windows diagnostics shows full travel, the game determines the maximum camera turn rate; adjust its controller-camera setting if available.
 
 **Input & calibration** saves independent stick sensitivity, deadzones, response curves and center offsets, plus trigger mode/range and vibration strength. **Preview** works without a server. Accessibility actions support button holds and directional input.
 
