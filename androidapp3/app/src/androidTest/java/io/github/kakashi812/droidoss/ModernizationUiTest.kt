@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
@@ -58,11 +59,38 @@ class ModernizationUiTest {
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Released"))
     }
 
-    @Test fun previewIsNotCoveredByTheToolbar() {
-        compose.setContent { KizunaTheme { LayoutEditorScreen(defaultLayout().copy(id = "custom1"), onSave = {}, onCancel = {}) } }
-        val preview = compose.onNodeWithContentDescription("Layout preview").fetchSemanticsNode().boundsInRoot
-        val save = compose.onNodeWithText("Save").fetchSemanticsNode().boundsInRoot
-        assertTrue("Editor toolbar must not cover controls", preview.top >= save.bottom)
+    @Test fun editorCanvasMatchesGameplayWithToolbarAtEitherEdge() {
+        val button = ButtonElement("edge", .12f, .14f, .10f, label = "Edge button", mask = 0x1000)
+        val initial = defaultLayout().copy(id = "custom1", elements = listOf(button))
+        val saved = mutableStateOf<ControllerLayout?>(null)
+        compose.setContent {
+            KizunaTheme {
+                val profile = saved.value
+                if (profile == null) LayoutEditorScreen(initial, onSave = { saved.value = it }, onCancel = {})
+                else PadScreen(null, profile, showStatus = false)
+            }
+        }
+        val preview = compose.onNodeWithContentDescription("Layout preview")
+        val bounds = preview.fetchSemanticsNode().boundsInRoot
+        val save = compose.onNode(hasText("Save") and hasClickAction())
+        assertTrue(save.fetchSemanticsNode().boundsInRoot.center.y > bounds.center.y)
+        preview.performTouchInput { click(Offset(width * button.x, height * button.y)) }
+        compose.onNodeWithContentDescription("Control inspector").assertExists()
+        assertEquals(bounds, preview.fetchSemanticsNode().boundsInRoot)
+        compose.onNodeWithContentDescription("Close inspector").performClick()
+
+        compose.onNodeWithContentDescription("More editor actions").performClick()
+        compose.onNodeWithText("Move toolbar to top").performClick()
+        assertTrue(save.fetchSemanticsNode().boundsInRoot.center.y < bounds.center.y)
+        assertEquals(bounds, preview.fetchSemanticsNode().boundsInRoot)
+        save.performClick()
+
+        val liveBounds = compose.onNodeWithContentDescription("Controller touch area").fetchSemanticsNode().boundsInRoot
+        val liveCenter = compose.onNodeWithContentDescription("Edge button").fetchSemanticsNode().boundsInRoot.center
+        assertEquals(bounds, liveBounds)
+        assertEquals(bounds.left + bounds.width * button.x, liveCenter.x, 1.5f)
+        assertEquals(bounds.top + bounds.height * button.y, liveCenter.y, 1.5f)
+        compose.runOnIdle { assertEquals(initial.elements, saved.value?.elements) }
     }
 
     @Test fun editorCanChooseTouchpadAndSaveSensitivity() {
