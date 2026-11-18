@@ -1,20 +1,26 @@
 package io.github.kakashi812.droidoss.ui
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,17 +29,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,12 +44,9 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.activity.compose.BackHandler
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,7 +67,6 @@ import androidx.compose.ui.unit.dp
 import io.github.kakashi812.droidoss.BuildConfig
 import io.github.kakashi812.droidoss.layout.ControllerLayout
 import io.github.kakashi812.droidoss.layout.DEFAULT_ID
-import io.github.kakashi812.droidoss.layout.MAX_CUSTOM
 import io.github.kakashi812.droidoss.layout.MAX_LAYOUTS
 import io.github.kakashi812.droidoss.protocol.Protocol
 import io.github.kakashi812.droidoss.transport.ConnectionState
@@ -109,113 +108,135 @@ fun ConnectScreen(
     updateContent: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    var deviceName by remember { mutableStateOf(initialDeviceName) }
+    var deviceName by rememberSaveable { mutableStateOf(initialDeviceName) }
     var slot by remember { mutableStateOf(initialSlot) }
-    var host by remember { mutableStateOf(initialHost) }
+    var host by rememberSaveable { mutableStateOf(initialHost) }
     var renamingId by remember { mutableStateOf<String?>(null) }
     var deletingId by remember { mutableStateOf<String?>(null) }
     var section by rememberSaveable { mutableIntStateOf(initialSection.coerceIn(0, 2)) }
-    val scroll = rememberScrollState()
+    var presetPicker by remember { mutableStateOf(false) }
+    val scrollStateHolder = rememberSaveableStateHolder()
     val focus = androidx.compose.ui.platform.LocalFocusManager.current
-    LaunchedEffect(section) { scroll.scrollTo(0) }
     BackHandler(enabled = section != 0) { section = 0; onSectionChanged(0); focus.clearFocus() }
 
     val busy = connectionState is ConnectionState.Connecting
-    val valid = host.isNotBlank()
     val canEdit = connectionState is ConnectionState.Idle ||
         connectionState is ConnectionState.NoServer ||
         connectionState is ConnectionState.ServerFull || connectionState is ConnectionState.SetupFailed
 
-    Box(modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.widthIn(max = 840.dp).fillMaxWidth().fillMaxHeight()
-                .verticalScroll(scroll).padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            GlassPanel(Modifier.fillMaxWidth()) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(io.github.kakashi812.droidoss.R.drawable.kizuna_logo),
-                        "Kizuna logo", Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)))
-                    Column(Modifier.weight(1f)) {
-                        Text("Kizuna", style = MaterialTheme.typography.headlineMedium)
-                        Text("Your games. Your controls.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Text("${layouts.firstOrNull { it.id == activeId }?.name ?: "Default"}", maxLines = 1,
-                        overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary, modifier = Modifier.widthIn(max = 100.dp))
-                }
-            }
-            when (section) {
-                0 -> {
-                    Column(Modifier.padding(horizontal = 4.dp)) {
-                        Text("Ready when you are.", style = MaterialTheme.typography.headlineSmall)
-                        Text("Connect to your PC on the same Wi-Fi.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    StatusPanel(connectionState)
-                    ServerList(servers, scanning, initialHost, canEdit, onScan) { server ->
-                        host = server.host; onConnect(server.host, server.port)
-                    }
-                    GlassPanel(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("Direct connection", style = MaterialTheme.typography.titleMedium)
-                            GlassTextField(host, { host = it }, label = { Text("PC address") }, placeholder = { Text("192.168.1.10") },
-                                singleLine = true, enabled = canEdit, modifier = Modifier.fillMaxWidth(),
-                                textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done))
-                            Text("Use the address shown in the Windows dashboard.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Button(onClick = { focus.clearFocus(); if (busy) onDisconnect() else onConnect(host.trim(), Protocol.INPUT_PORT) },
-                                enabled = busy || (canEdit && valid), shape = CircleShape, modifier = Modifier.fillMaxWidth().height(50.dp)) {
-                                if (busy) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary); Spacer(Modifier.size(10.dp)) }
-                                Text(if (busy) "Cancel" else "Connect / retry", style = MaterialTheme.typography.titleSmall)
+    val colors = MaterialTheme.colorScheme
+    val activeName = remember(layouts, activeId) { layouts.firstOrNull { it.id == activeId }?.name ?: "Default" }
+    CompositionLocalProvider(LocalContentColor provides colors.onBackground) {
+        BoxWithConstraints(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+            val columns = if (maxWidth >= 360.dp) 2 else 1
+            Column(Modifier.widthIn(max = 780.dp).fillMaxWidth().fillMaxHeight()) {
+                HomeHeader(activeName)
+                scrollStateHolder.SaveableStateProvider(section) {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        when (section) {
+                            0 -> {
+                                item("status") {
+                                    StatusPanel(connectionState)
+                                }
+                                item("servers") {
+                                    ServerList(servers, scanning, initialHost, canEdit, onScan) { server ->
+                                        focus.clearFocus()
+                                        host = server.host
+                                        onConnect(server.host, server.port)
+                                    }
+                                }
+                                item("direct") {
+                                    val submit = {
+                                        focus.clearFocus()
+                                        if (busy) onDisconnect() else if (canEdit && host.isNotBlank()) {
+                                            onConnect(host.trim(), Protocol.INPUT_PORT)
+                                        }
+                                    }
+                                    GlassPanel(Modifier.fillMaxWidth()) {
+                                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            Text("Direct connection", style = MaterialTheme.typography.titleMedium)
+                                            GlassTextField(host, { host = it }, label = { Text("PC address") }, placeholder = { Text("192.168.1.10") },
+                                                singleLine = true, enabled = canEdit, modifier = Modifier.fillMaxWidth(),
+                                                textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
+                                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                                                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { submit() }))
+                                            Text("Use the address shown in the Windows dashboard.", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                                            Button(onClick = submit, enabled = busy || (canEdit && host.isNotBlank()), modifier = Modifier.fillMaxWidth()) {
+                                                if (busy) {
+                                                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = colors.onPrimary)
+                                                    Spacer(Modifier.size(8.dp))
+                                                }
+                                                Text(if (busy) "Cancel" else if (connectionState is ConnectionState.Idle) "Connect" else "Retry")
+                                            }
+                                        }
+                                    }
+                                }
+                                item("player") {
+                                    GlassPanel(Modifier.fillMaxWidth()) {
+                                        Column(Modifier.padding(12.dp)) {
+                                            Text("Your player", style = MaterialTheme.typography.titleMedium)
+                                            Text("Occupied slots stay with their current player.", style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                (-1..3).forEach { player ->
+                                                    GlassChoice(slot == player, { slot = player; onSlot(player) },
+                                                        label = { Text(if (player == -1) "Auto" else "P${player + 1}") }, enabled = canEdit)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            1 -> profileItems(layouts, activeId, columns, layoutActions,
+                                onPresets = { presetPicker = true }, onRename = { renamingId = it }, onDelete = { deletingId = it })
+                            else -> {
+                                item("preferences") {
+                                    GlassPanel(Modifier.fillMaxWidth()) {
+                                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Text("Appearance", style = MaterialTheme.typography.titleMedium)
+                                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                listOf("System", "Light", "Dark").forEach { mode ->
+                                                    GlassChoice(themeMode == mode, { onTheme(mode) }, label = { Text(mode) })
+                                                }
+                                            }
+                                            HorizontalDivider()
+                                            Spacer(Modifier.height(2.dp))
+                                            Text("Controller buttons", style = MaterialTheme.typography.titleMedium)
+                                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                GlassChoice(!playStationButtons, { onControllerButtons(false) }, label = { Text("Xbox") })
+                                                GlassChoice(playStationButtons, { onControllerButtons(true) }, label = { Text("PlayStation") })
+                                            }
+                                            Text("Choose matching controller output on the Windows dashboard.",
+                                                style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                                            GlassTextField(deviceName, { deviceName = it.take(32); onDeviceName(deviceName) }, label = { Text("Device name") },
+                                                singleLine = true, enabled = canEdit, modifier = Modifier.fillMaxWidth())
+                                        }
+                                    }
+                                }
+                                item("updates") { updateContent() }
+                                item("about") { Footer() }
                             }
                         }
                     }
-                    GlassPanel(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("Your player", style = MaterialTheme.typography.titleMedium)
-                            Text("Occupied slots stay with their current player.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                (-1..3).forEach { player -> GlassChoice(slot == player, { slot = player; onSlot(player) },
-                                    label = { Text(if (player == -1) "Auto" else "P${player + 1}") }, enabled = canEdit) }
-                            }
-                        }
-                    }
                 }
-                1 -> LayoutGallery(layouts, activeId, layoutActions,
-                    onRenameRequest = { renamingId = it }, onDeleteRequest = { deletingId = it })
-                else -> {
-                    GlassPanel(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Make it yours.", style = MaterialTheme.typography.headlineSmall)
-                            Text("Appearance", style = MaterialTheme.typography.labelLarge)
-                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                listOf("System", "Light", "Dark").forEach { mode -> GlassChoice(themeMode == mode, { onTheme(mode) }, label = { Text(mode) }) }
-                            }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            Text("Controller buttons", style = MaterialTheme.typography.labelLarge)
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                GlassChoice(!playStationButtons, { onControllerButtons(false) }, label = { Text("Xbox") })
-                                GlassChoice(playStationButtons, { onControllerButtons(true) }, label = { Text("PlayStation") })
-                            }
-                            Text("Choose matching controller output on the Windows dashboard.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            GlassTextField(deviceName, { deviceName = it.take(32); onDeviceName(deviceName) }, label = { Text("Device name") },
-                                singleLine = true, enabled = canEdit, modifier = Modifier.fillMaxWidth())
-                        }
+                HomeNavigation(section, Modifier.align(Alignment.CenterHorizontally)) { index ->
+                    if (section != index) {
+                        focus.clearFocus()
+                        section = index
+                        onSectionChanged(index)
                     }
-                    updateContent()
-                    Footer()
-                }
-            }
-        }
-        GlassPanel(Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 12.dp)
-            .widthIn(max = 560.dp).fillMaxWidth(), shape = RoundedCornerShape(32.dp)) {
-            Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("Connect", "Profiles", "Settings").forEachIndexed { index, title ->
-                    GlassChoice(section == index, { focus.clearFocus(); section = index; onSectionChanged(index) }, label = { Text(title) }, modifier = Modifier.weight(1f).heightIn(min = 46.dp))
                 }
             }
         }
     }
+
+    if (presetPicker) GamePresetDialog(
+        onChoose = { layoutActions.preset(it); presetPicker = false },
+        onDismiss = { presetPicker = false },
+    )
 
     renamingId?.let { id ->
         val current = layouts.firstOrNull { it.id == id }?.name.orEmpty()
@@ -238,6 +259,56 @@ fun ConnectScreen(
             },
             onDismiss = { deletingId = null },
         )
+    }
+}
+
+@Composable
+private fun HomeHeader(activeName: String) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        androidx.compose.foundation.Image(
+            androidx.compose.ui.res.painterResource(io.github.kakashi812.droidoss.R.drawable.kizuna_logo),
+            contentDescription = null, modifier = Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)),
+        )
+        Text("Kizuna", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, color = colors.onBackground)
+        Box(Modifier.widthIn(max = 124.dp).background(colors.primary.copy(alpha = .14f), CircleShape)
+            .padding(horizontal = 10.dp, vertical = 5.dp)) {
+            Text(activeName, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.labelMedium, color = colors.primary)
+        }
+    }
+}
+
+private val HomeTabs = listOf("Connect", "Profiles", "Settings")
+
+@Composable
+private fun HomeNavigation(section: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    GlassPanel(modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+        .widthIn(max = 480.dp).fillMaxWidth(), shape = CircleShape, strong = true) {
+        Row(
+            Modifier.selectableGroup().padding(3.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            HomeTabs.forEachIndexed { index, title ->
+                val selected = section == index
+                Box(
+                    Modifier.weight(1f).heightIn(min = 48.dp).clip(CircleShape)
+                        .background(if (selected) colors.primary.copy(alpha = .19f) else Color.Transparent)
+                        .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(index) })
+                        .padding(horizontal = 3.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(title, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                        color = if (selected) colors.primary else colors.onSurfaceVariant)
+                }
+            }
+        }
     }
 }
 
@@ -275,7 +346,7 @@ private fun ServerList(
     onPick: (DiscoveredServer) -> Unit,
 ) {
     GlassPanel(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     "Servers on this network",
@@ -293,7 +364,7 @@ private fun ServerList(
                 }
             }
 
-            HorizontalDivider(Modifier.padding(vertical = 12.dp))
+            HorizontalDivider(Modifier.padding(bottom = 8.dp))
 
             if (servers.isEmpty()) {
                 Text(
@@ -350,12 +421,14 @@ private fun ServerRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = if (lastUsed) "${server.host}  ·  last used" else server.host,
+                    text = server.host,
                     style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (lastUsed) Text("Last used", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Spacer(Modifier.size(12.dp))
+            Spacer(Modifier.size(8.dp))
             Text(
                 text = when (server.freePads) {
                     0 -> "Full"
@@ -373,95 +446,52 @@ private fun ServerRow(
     }
 }
 
-/**
- * The Layouts panel: Default plus up to [MAX_CUSTOM] custom layouts, two to a
- * row, with the ways to make, receive and pass layouts on above them.
- */
-@Composable
-private fun LayoutGallery(
+private fun LazyListScope.profileItems(
     layouts: List<ControllerLayout>,
     activeId: String,
+    columns: Int,
     actions: LayoutActions,
-    onRenameRequest: (String) -> Unit,
-    onDeleteRequest: (String) -> Unit,
+    onPresets: () -> Unit,
+    onRename: (String) -> Unit,
+    onDelete: (String) -> Unit,
 ) {
-    var presetPicker by remember { mutableStateOf(false) }
-    if (presetPicker) GamePresetDialog(onChoose = { actions.preset(it); presetPicker = false }, onDismiss = { presetPicker = false })
     val full = layouts.size >= MAX_LAYOUTS
-
-    GlassPanel(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "Game profiles",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    "${layouts.size} of $MAX_LAYOUTS",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (full) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Pick which layout to use or edit. Use ⋮ for calibration, macros, sharing and more.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(12.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { actions.duplicate(DEFAULT_ID) },
-                    enabled = !full,
-                    contentPadding = SmallPadding,
-                    modifier = Modifier.weight(1f),
-                ) { CardButtonLabel("+ New") }
-                OutlinedButton(
-                    onClick = actions.importFile,
-                    contentPadding = SmallPadding,
-                    modifier = Modifier.weight(1f),
-                ) { CardButtonLabel("Import file") }
-                OutlinedButton(
-                    onClick = actions.scanQr,
-                    contentPadding = SmallPadding,
-                    modifier = Modifier.weight(1f),
-                ) { CardButtonLabel("Scan QR") }
-            }
-
-            FilledTonalButton(onClick = { presetPicker = true }, enabled = !full, modifier = Modifier.fillMaxWidth()) {
-                Text("Game presets · eFootball, Tomb Raider, Resident Evil…")
-            }
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
-
-            layouts.chunked(2).forEach { pair ->
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    for (layout in pair) {
-                        LayoutCard(
-                            layout = layout,
-                            isActive = layout.id == activeId,
-                            canDuplicate = !full,
-                            actions = actions,
-                            onRenameRequest = { onRenameRequest(layout.id) },
-                            onDeleteRequest = { onDeleteRequest(layout.id) },
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    // Keep a lone card at half width rather than stretching it.
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+    item(key = "profile-actions", contentType = "profile-actions") {
+        GlassPanel(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Game profiles", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                    Text("${layouts.size} / $MAX_LAYOUTS", style = MaterialTheme.typography.labelMedium,
+                        color = if (full) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Spacer(Modifier.height(12.dp))
+                FilledTonalButton(onClick = onPresets, enabled = !full, modifier = Modifier.fillMaxWidth()) {
+                    Text("Browse game presets")
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(onClick = { actions.duplicate(DEFAULT_ID) }, enabled = !full,
+                        contentPadding = SmallPadding, modifier = Modifier.weight(1f)) { Text("+ New", textAlign = TextAlign.Center) }
+                    OutlinedButton(onClick = actions.importFile, contentPadding = SmallPadding,
+                        modifier = Modifier.weight(1f)) { Text("Import file", textAlign = TextAlign.Center) }
+                    OutlinedButton(onClick = actions.scanQr, contentPadding = SmallPadding,
+                        modifier = Modifier.weight(1f)) { Text("Scan QR", textAlign = TextAlign.Center) }
+                }
+                if (layouts.size == 1) {
+                    Text("Create a layout from a preset or import one someone shared.",
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
-
-            if (layouts.size == 1) {
-                Text(
-                    "Tap + New to make a layout of your own, or import one someone shared.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+        }
+    }
+    items(layouts.chunked(columns), key = { "profiles-${it.first().id}" }, contentType = { "profile-row" }) { row ->
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            for (layout in row) {
+                androidx.compose.runtime.key(layout.id) {
+                    LayoutCard(layout, layout.id == activeId, !full, actions,
+                        onRenameRequest = { onRename(layout.id) }, onDeleteRequest = { onDelete(layout.id) },
+                        modifier = Modifier.weight(1f))
+                }
             }
+            repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
@@ -479,17 +509,11 @@ private fun LayoutCard(
 ) {
     val isDefault = layout.id == DEFAULT_ID
     var menuOpen by remember { mutableStateOf(false) }
-    val border = if (isActive) {
-        Modifier.border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = .65f), RoundedCornerShape(20.dp))
-    } else {
-        Modifier
-    }
 
     GlassCard(
         selected = isActive,
         shape = RoundedCornerShape(20.dp),
         modifier = modifier
-            .then(border)
             // Long-press renames a custom layout. Default is not renamable, so its
             // long-press does nothing rather than offering a rename it can't honour.
             .combinedClickable(
@@ -642,7 +666,7 @@ private fun RenameDialog(
 @Composable
 private fun Footer() {
     val uriHandler = LocalUriHandler.current
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             "version ${BuildConfig.VERSION_NAME}",
             style = MaterialTheme.typography.bodySmall,
@@ -734,7 +758,7 @@ private fun headline(state: ConnectionState): String = when (state) {
 
 private fun detail(state: ConnectionState): String? = when (state) {
     is ConnectionState.Idle ->
-        "Start the Kizuna server on your PC, then pick it above."
+        "Start Kizuna on your PC and connect both devices to the same Wi-Fi network."
 
     is ConnectionState.Connecting -> null
 
