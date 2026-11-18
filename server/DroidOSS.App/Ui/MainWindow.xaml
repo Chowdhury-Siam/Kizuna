@@ -20,12 +20,12 @@
             <Setter Property="Foreground" Value="{DynamicResource TextMuted}" />
         </Style>
 
-        <!-- A plain rounded panel. -->
+        <!-- Shared translucent glass panels. -->
         <Style x:Key="Panel" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource Surface}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource Border}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource GlassRim}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="20" />
+            <Setter Property="CornerRadius" Value="24" />
             <Setter Property="Padding" Value="12" />
         </Style>
 
@@ -38,25 +38,29 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Chrome" Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="9" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
+                        <Grid x:Name="ButtonRoot" RenderTransformOrigin="0.5,0.5">
+                            <Border x:Name="Chrome" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="18" />
+                            <Border CornerRadius="18" BorderThickness="1" BorderBrush="{DynamicResource GlassRim}" Opacity="0.7" />
+                            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Chrome" Property="Opacity" Value="0.85" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Chrome" Property="Opacity" Value="0.7" />
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.72" />
+                                <Setter TargetName="ButtonRoot" Property="RenderTransform"><Setter.Value><ScaleTransform ScaleX="0.98" ScaleY="0.98" /></Setter.Value></Setter>
                             </Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="ButtonRoot" Property="Opacity" Value="0.36" /></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource Accent}" /><Setter TargetName="Chrome" Property="BorderThickness" Value="2" /></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
         <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
-            <Setter Property="Background" Value="{DynamicResource Accent}" />
+            <Setter Property="Background" Value="{DynamicResource AccentFill}" />
             <Setter Property="Foreground" Value="{DynamicResource AccentText}" />
             <Setter Property="BorderThickness" Value="0" />
         </Style>
@@ -88,7 +92,7 @@
                                 <Setter TargetName="Track" Property="Background" Value="{DynamicResource Accent}" />
                                 <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource Accent}" />
                                 <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right" />
-                                <Setter TargetName="Knob" Property="Fill" Value="{DynamicResource AccentText}" />
+                                <Setter TargetName="Knob" Property="Fill" Value="White" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -98,7 +102,7 @@
 
         <!-- One player card. -->
         <DataTemplate x:Key="SlotCard" DataType="{x:Type ui:SlotViewModel}">
-            <Border x:Name="Card" Style="{StaticResource Panel}" Margin="8">
+            <Border x:Name="Card" Style="{StaticResource Panel}" Margin="6" Padding="16" MinHeight="142">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -110,7 +114,7 @@
                     <DockPanel>
                         <ui:PlayerRing DockPanel.Dock="Left" Width="30" Height="30" Margin="0,0,12,0"
                                        Slot="{Binding Slot}" Lit="{Binding IsConnected}" />
-                        <Border x:Name="Badge" DockPanel.Dock="Right" CornerRadius="10" Padding="10,3"
+                        <Border x:Name="Badge" DockPanel.Dock="Right" CornerRadius="14" Padding="10,4"
                                 VerticalAlignment="Center" Background="{DynamicResource SurfaceAlt}">
                             <TextBlock x:Name="BadgeText" Text="Empty" FontSize="12" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextMuted}" />
@@ -192,12 +196,16 @@
                     <TextBlock x:Name="UpdateStatus" Text="Stable updates from GitHub" FontSize="12" VerticalAlignment="Center" Margin="0,0,12,0" TextWrapping="Wrap" MaxWidth="350" />
                     <Button x:Name="CheckUpdateButton" Content="Check updates" Style="{StaticResource QuietButton}" Click="CheckUpdate_Click" Margin="0,0,8,0" />
                     <Button x:Name="UpdateAction" Content="Download update" Style="{StaticResource AccentButton}" Click="UpdateAction_Click" Visibility="Collapsed" Margin="0,0,8,0" />
-                    <CheckBox x:Name="UpdateAuto" Content="Check automatically" Click="UpdateAuto_Click" Foreground="{DynamicResource Text}" VerticalAlignment="Center" />
+                    <CheckBox x:Name="UpdateAuto" Style="{StaticResource Switch}" Content="Check automatically" Click="UpdateAuto_Click" Foreground="{DynamicResource Text}" VerticalAlignment="Center" />
                 </WrapPanel>
                 <ProgressBar x:Name="UpdateProgress" Height="3" Minimum="0" Maximum="100" Margin="0,6,0,0" Visibility="Collapsed" />
             </StackPanel>
         </Border>
-    <Grid>
+    <Grid ClipToBounds="True">
+        <Canvas IsHitTestVisible="False">
+            <Ellipse Width="680" Height="680" Canvas.Left="-260" Canvas.Top="-300" Fill="{DynamicResource AmbientGlow}" />
+            <Ellipse Width="560" Height="560" Canvas.Right="-180" Canvas.Bottom="-220" Fill="{DynamicResource AmbientGlow}" />
+        </Canvas>
         <!-- ── running ─────────────────────────────────────────────────── -->
         <Grid Margin="20,16,20,14" Visibility="{Binding IsRunning, Converter={StaticResource Visible}}">
             <Grid.RowDefinitions>
@@ -220,8 +228,9 @@
                 <StackPanel Orientation="Horizontal">
                     <Image Source="/Assets/kizuna.png" Width="48" Height="48" Margin="0,0,12,0" AutomationProperties.Name="Kizuna logo" />
                     <StackPanel>
-                    <TextBlock Text="Kizuna" FontSize="28" FontWeight="Bold" />
-                    <TextBlock Text="Controller dashboard · Xbox / PlayStation · four players" Style="{StaticResource Muted}" />
+                    <TextBlock Text="CONTROL CENTER" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" />
+                    <TextBlock Text="Kizuna" FontSize="30" FontWeight="SemiBold" />
+                    <TextBlock Text="Your phone, your controller · four players" Style="{StaticResource Muted}" />
                     </StackPanel>
                 </StackPanel>
             </DockPanel>
@@ -349,7 +358,7 @@
             <StackPanel>
                 <TextBlock Text="One more thing to install" FontSize="22" FontWeight="SemiBold" />
                 <TextBlock TextWrapping="Wrap" Margin="0,10,0,0" Style="{StaticResource Muted}"
-                           Text="Kizuna needs the free ViGEmBus driver to create virtual Xbox controllers. It only has to be installed once." />
+                           Text="Kizuna needs the free ViGEmBus driver to create virtual Xbox or PlayStation controllers. It only has to be installed once." />
                 <TextBlock Margin="0,14,0,0" TextWrapping="Wrap" LineHeight="22">
                     1. Download the installer and run it.<LineBreak />
                     2. Accept the admin prompt, and reboot if it asks.<LineBreak />
