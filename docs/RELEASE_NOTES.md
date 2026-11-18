@@ -1,3 +1,11 @@
+# Kizuna 1.1.2
+
+- Both sticks keep responding when an active drag crosses another control. The drag stays with the stick until release, including in touchpad mode.
+- A touch that starts on a button still belongs to the button. Another finger can press a button while the stick is held.
+- Shared version 1.1.2 with Android code 20.
+
+---
+
 # Kizuna 1.1.1
 
 - Both analog sticks keep their original center when a drag passes over another control. Input pauses over the control and resumes as soon as the finger leaves it.
