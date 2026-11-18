@@ -46,7 +46,7 @@ class PadTouchRouterTest {
             r.up(1)
         }
     }
-    @Test fun bothAnalogSticksPauseOverButtonsAndKeepTheirOriginalCentres() {
+    @Test fun bothAnalogSticksContinueAcrossButtonsWithoutPressingThem() {
         for ((stick, blocker) in listOf(left to dpad, right to a)) {
             for (floating in listOf(false, true)) {
                 val r = router()
@@ -56,12 +56,17 @@ class PadTouchRouterTest {
                 r.move(1, x + 25f, y, 10_000_000)
                 val before = r.snapshot()
                 assertTrue(before.inputs.single().x > 0f)
-                r.move(1, blocker.x * 1000, blocker.y * 600, 20_000_000)
-                val blocked = r.snapshot()
-                assertTrue(blocked.inputs.isEmpty())
-                assertEquals(setOf(stick.stick), blocked.sticks)
-                assertEquals(TouchPoint(0f, 0f), blocked.knobs[stick.id])
-                assertEquals(before.floatingCentres, blocked.floatingCentres)
+                val buttonX = blocker.x * 1000
+                val buttonY = blocker.y * 600
+                r.move(1, buttonX, buttonY, 20_000_000)
+                val crossing = r.snapshot()
+                val radius = stick.size * 500
+                assertEquals(ControlTouch(stick.id, (buttonX - x) / radius, (buttonY - y) / radius), crossing.inputs.single())
+                assertEquals(setOf(stick.stick), crossing.sticks)
+                assertEquals(before.floatingCentres, crossing.floatingCentres)
+                r.down(2, buttonX, buttonY, 21_000_000)
+                assertEquals(setOf(stick.id, blocker.id), r.snapshot().inputs.map { it.id }.toSet())
+                r.up(2)
                 r.move(1, x + 25f, y, 30_000_000)
                 assertEquals(before, r.snapshot())
                 r.move(1, x, y, 40_000_000)
@@ -93,7 +98,7 @@ class PadTouchRouterTest {
         r.down(2, 850f, 240f, 0)
         assertEquals("a", r.snapshot().inputs.single().id)
     }
-    @Test fun floatingTouchpadRetainsEdgeTurnAndCanPauseOverAControl() {
+    @Test fun floatingTouchpadKeepsTurningOverAControlWithoutPressingIt() {
         val touchpad = right.copy(mode = StickMode.TOUCHPAD)
         val r = PadTouchRouter(listOf(touchpad, a).map { TouchTarget(it, it.x * 1000, it.y * 600, it.size * 500) }, 1000f, 24f)
         r.down(1, 600f, 200f, 0)
@@ -101,9 +106,10 @@ class PadTouchRouterTest {
         r.sample(2_000_000_000)
         assertTrue(r.snapshot().inputs.single().x > 0)
         r.move(1, 850f, 240f, 2_010_000_000)
-        assertTrue(r.snapshot().inputs.isEmpty())
-        r.move(1, 680f, 200f, 2_020_000_000)
-        assertEquals(ControlTouch(touchpad.id, 0f, 0f), r.snapshot().inputs.single())
+        r.sample(4_000_000_000)
+        val moving = r.snapshot().inputs.single()
+        assertEquals(touchpad.id, moving.id)
+        assertTrue(moving.x > 0f)
         r.up(1)
         assertTrue(r.snapshot().sticks.isEmpty())
     }
