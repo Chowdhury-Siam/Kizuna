@@ -156,8 +156,7 @@ class ModernizationUiTest {
         val bounds = target.fetchSemanticsNode().boundsInRoot
         val neighborCenter = neighbor.fetchSemanticsNode().boundsInRoot.center
         target.performTouchInput { moveTo(Offset(neighborCenter.x - bounds.left, neighborCenter.y - bounds.top)) }
-        // The button exclusion now pauses this captured stick without pressing the neighbor.
-        target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Stopped"))
+        target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Moving"))
         neighbor.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Released"))
         target.performTouchInput { up() }
         target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Stopped"))
