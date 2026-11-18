@@ -156,7 +156,8 @@ class ModernizationUiTest {
         val bounds = target.fetchSemanticsNode().boundsInRoot
         val neighborCenter = neighbor.fetchSemanticsNode().boundsInRoot.center
         target.performTouchInput { moveTo(Offset(neighborCenter.x - bounds.left, neighborCenter.y - bounds.top)) }
-        target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Moving"))
+        // The button exclusion now pauses this captured stick without pressing the neighbor.
+        target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Stopped"))
         neighbor.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Released"))
         target.performTouchInput { up() }
         target.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Stopped"))
@@ -165,6 +166,47 @@ class ModernizationUiTest {
         neighbor.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Held"))
         neighbor.performTouchInput { up() }
         neighbor.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Released"))
+    }
+
+    @Test fun emptySideDragsDriveBothSticksButAButtonTouchNeverFallsThrough() {
+        var output = io.github.kakashi812.droidoss.protocol.PadState()
+        val layout = defaultLayout().copy(elements = listOf(
+            StickElement("left", .15f, .7f, .15f, stick = Stick.LEFT),
+            StickElement("right", .7f, .7f, .15f, stick = Stick.RIGHT),
+            ButtonElement("a", .85f, .4f, .08f, mask = 0x1000, label = "A"),
+        ))
+        compose.setContent { KizunaTheme { NarrowPhone { PadScreen(null, layout, onSnapshot = { output = it }) } } }
+        val area = compose.onNodeWithContentDescription("Controller touch area")
+        area.performTouchInput {
+            down(0, Offset(width * .1f, height * .25f))
+            down(1, Offset(width * .55f, height * .25f))
+            moveTo(0, Offset(width * .2f, height * .25f))
+            moveTo(1, Offset(width * .55f, height * .2f))
+        }
+        compose.runOnIdle { assertTrue(output.thumbLX > 0); assertTrue(output.thumbRY > 0); assertEquals(0, output.buttons) }
+        area.performTouchInput { up(0); up(1) }
+        compose.runOnIdle { assertEquals(0.toShort(), output.thumbLX); assertEquals(0.toShort(), output.thumbRY) }
+        area.performTouchInput { down(Offset(width * .85f, height * .4f)) }
+        compose.runOnIdle { assertEquals(0x1000, output.buttons); assertEquals(0.toShort(), output.thumbRX) }
+        area.performTouchInput { moveTo(Offset(width * .5f, height * .25f)) }
+        compose.runOnIdle { assertEquals(0, output.buttons); assertEquals(0.toShort(), output.thumbLX); assertEquals(0.toShort(), output.thumbRX) }
+        area.performTouchInput { up() }
+    }
+
+    @Test fun aMacroTapPlaysAndStopsWhileManualButtonsStayHeld() {
+        var output = io.github.kakashi812.droidoss.protocol.PadState()
+        val macro = MacroElement("macro", frames = listOf(MacroFrame(0, buttons = 0x1000), MacroFrame(30_000)))
+        val layout = defaultLayout().copy(elements = listOf(
+            ButtonElement("x", .2f, .5f, .1f, mask = 0x4000, label = "X"), macro,
+        ))
+        compose.setContent { KizunaTheme { NarrowPhone { PadScreen(null, layout, onSnapshot = { output = it }) } } }
+        compose.onNodeWithContentDescription("X").performSemanticsAction(SemanticsActions.OnClick) { it() }
+        compose.onNodeWithContentDescription("Macro M1").performSemanticsAction(SemanticsActions.OnClick) { it() }
+        compose.runOnIdle { assertEquals(0x5000, output.buttons) }
+        compose.onNodeWithContentDescription("Macro M1").performSemanticsAction(SemanticsActions.OnClick) { it() }
+        compose.runOnIdle { assertEquals(0x4000, output.buttons) }
+        compose.onNodeWithContentDescription("X").performSemanticsAction(SemanticsActions.OnClick) { it() }
+        compose.runOnIdle { assertEquals(0, output.buttons) }
     }
 
     private fun assertInsidePhone(node: SemanticsNodeInteraction) {
