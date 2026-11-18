@@ -19,13 +19,13 @@ fun GamePresetDialog(onChoose: (String) -> Unit, onDismiss: () -> Unit) {
     var series by remember { mutableStateOf("All") }
     val matches = GamePresets.catalog.filter { (series == "All" || it.series == series) && it.title.contains(search, ignoreCase = true) }
     Dialog(onDismissRequest = onDismiss) {
-        Surface(shape = MaterialTheme.shapes.extraLarge) {
+        GlassPanel(shape = MaterialTheme.shapes.extraLarge, strong = true) {
             Column(Modifier.widthIn(max = 560.dp).heightIn(max = 560.dp).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Game presets", style = MaterialTheme.typography.titleLarge)
                 Text("Tuned starting profiles, ready to customise. Game support varies by edition; legacy titles may need Steam Input.", style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(search, { search = it }, singleLine = true, label = { Text("Find a game") }, modifier = Modifier.fillMaxWidth())
+                GlassTextField(search, { search = it }, singleLine = true, label = { Text("Find a game") }, modifier = Modifier.fillMaxWidth())
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("All", "Football", "Tomb Raider", "Resident Evil", "Steam").forEach { item -> FilterChip(series == item, { series = item }, label = { Text(item) }) }
+                    listOf("All", "Football", "Tomb Raider", "Resident Evil", "Steam").forEach { item -> GlassChoice(series == item, { series = item }, label = { Text(item) }) }
                 }
                 LazyColumn(Modifier.weight(1f, fill = false)) {
                     if (matches.isEmpty()) item { Text("No matching preset", Modifier.padding(12.dp)) }
