@@ -4,6 +4,10 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -41,6 +45,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -75,7 +81,8 @@ private val REPO_URL = "https://github.com/${BuildConfig.RELEASE_REPOSITORY}"
  * The layout gallery lets a user preview and arrange controllers *before*
  * connecting — the pad and the editor both work with no server, so there is
  * nothing to wait for. Kept scrollable because this now holds more than one
- * screenful on a short phone in portrait.
+ * screenful on a short phone in portrait. Connect, Profiles and Settings now
+ * share a floating navigation bar and retain their selection while editing.
  */
 @Composable
 fun ConnectScreen(
@@ -97,6 +104,8 @@ fun ConnectScreen(
     onTheme: (String) -> Unit,
     playStationButtons: Boolean = false,
     onControllerButtons: (Boolean) -> Unit = {},
+    initialSection: Int = 0,
+    onSectionChanged: (Int) -> Unit = {},
     updateContent: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -105,6 +114,11 @@ fun ConnectScreen(
     var host by remember { mutableStateOf(initialHost) }
     var renamingId by remember { mutableStateOf<String?>(null) }
     var deletingId by remember { mutableStateOf<String?>(null) }
+    var section by rememberSaveable { mutableIntStateOf(initialSection.coerceIn(0, 2)) }
+    val scroll = rememberScrollState()
+    val focus = androidx.compose.ui.platform.LocalFocusManager.current
+    LaunchedEffect(section) { scroll.scrollTo(0) }
+    BackHandler(enabled = section != 0) { section = 0; onSectionChanged(0); focus.clearFocus() }
 
     val busy = connectionState is ConnectionState.Connecting
     val valid = host.isNotBlank()
@@ -112,144 +126,95 @@ fun ConnectScreen(
         connectionState is ConnectionState.NoServer ||
         connectionState is ConnectionState.ServerFull || connectionState is ConnectionState.SetupFailed
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .widthIn(max = 840.dp)
-            .padding(horizontal = 16.dp)
-            .animateContentSize(spring()),
-        horizontalAlignment = Alignment.Start,
-    ) {
-        Spacer(Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(io.github.kakashi812.droidoss.R.drawable.kizuna_logo), "Kizuna logo", Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)))
-        Text(
-            text = "Kizuna",
-            style = MaterialTheme.typography.displaySmall,
-            fontWeight = FontWeight.Bold,
-        )
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = "Your games. Your controls. Four players.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("System", "Light", "Dark").forEach { mode ->
-                FilterChip(selected = themeMode == mode, onClick = { onTheme(mode) }, label = { Text(mode) })
-            }
-        }
-        Text("Controller buttons", style = MaterialTheme.typography.labelLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = !playStationButtons, onClick = { onControllerButtons(false) }, label = { Text("Xbox") })
-            FilterChip(selected = playStationButtons, onClick = { onControllerButtons(true) }, label = { Text("PlayStation") })
-        }
-        Text("For a PS4 controller in games, also choose PlayStation 4 on the Windows dashboard.", style = MaterialTheme.typography.bodySmall)
-        OutlinedTextField(deviceName, { deviceName = it.take(32); onDeviceName(deviceName) },
-            label = { Text("Device name") }, singleLine = true, enabled = canEdit, modifier = Modifier.fillMaxWidth())
-        Text("Preferred player · occupied slots are never displaced", style = MaterialTheme.typography.labelLarge)
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            (-1..3).forEach { player ->
-                FilterChip(selected = slot == player, enabled = canEdit, onClick = { slot = player; onSlot(player) },
-                    label = { Text(if (player == -1) "Auto" else "P${player + 1}") })
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        ServerList(
-            servers = servers,
-            scanning = scanning,
-            lastHost = initialHost,
-            enabled = canEdit,
-            onScan = onScan,
-            onPick = { server ->
-                host = server.host
-                onConnect(server.host, server.port)
-            },
-        )
-
-        Spacer(Modifier.height(20.dp))
-        Text(
-            text = "Or enter the address yourself",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(Modifier.height(8.dp))
-
-        OutlinedTextField(
-            value = host,
-            onValueChange = { host = it },
-            label = { Text("PC address") },
-            placeholder = { Text("192.168.1.10") },
-            singleLine = true,
-            enabled = canEdit,
-            textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Decimal,
-                imeAction = ImeAction.Done,
-            ),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "Needed only if the server isn't listed — the server window prints its address when it starts.",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Spacer(Modifier.height(20.dp))
-
-        Button(
-            onClick = { if (busy) onDisconnect() else onConnect(host.trim(), Protocol.INPUT_PORT) },
-            enabled = busy || (canEdit && valid),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
+    Box(modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.widthIn(max = 840.dp).fillMaxWidth().fillMaxHeight()
+                .verticalScroll(scroll).padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            if (busy) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-                Spacer(Modifier.size(12.dp))
-                Text("Cancel")
-            } else {
-                Text("Connect / retry", style = MaterialTheme.typography.titleMedium)
+            GlassPanel(Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(io.github.kakashi812.droidoss.R.drawable.kizuna_logo),
+                        "Kizuna logo", Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)))
+                    Column(Modifier.weight(1f)) {
+                        Text("Kizuna", style = MaterialTheme.typography.headlineMedium)
+                        Text("Your games. Your controls.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text("${layouts.firstOrNull { it.id == activeId }?.name ?: "Default"}", maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary, modifier = Modifier.widthIn(max = 100.dp))
+                }
+            }
+            when (section) {
+                0 -> {
+                    Column(Modifier.padding(horizontal = 4.dp)) {
+                        Text("Ready when you are.", style = MaterialTheme.typography.headlineSmall)
+                        Text("Connect to your PC on the same Wi-Fi.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    StatusPanel(connectionState)
+                    ServerList(servers, scanning, initialHost, canEdit, onScan) { server ->
+                        host = server.host; onConnect(server.host, server.port)
+                    }
+                    GlassPanel(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("Direct connection", style = MaterialTheme.typography.titleMedium)
+                            GlassTextField(host, { host = it }, label = { Text("PC address") }, placeholder = { Text("192.168.1.10") },
+                                singleLine = true, enabled = canEdit, modifier = Modifier.fillMaxWidth(),
+                                textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done))
+                            Text("Use the address shown in the Windows dashboard.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Button(onClick = { focus.clearFocus(); if (busy) onDisconnect() else onConnect(host.trim(), Protocol.INPUT_PORT) },
+                                enabled = busy || (canEdit && valid), shape = CircleShape, modifier = Modifier.fillMaxWidth().height(50.dp)) {
+                                if (busy) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary); Spacer(Modifier.size(10.dp)) }
+                                Text(if (busy) "Cancel" else "Connect / retry", style = MaterialTheme.typography.titleSmall)
+                            }
+                        }
+                    }
+                    GlassPanel(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text("Your player", style = MaterialTheme.typography.titleMedium)
+                            Text("Occupied slots stay with their current player.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                (-1..3).forEach { player -> GlassChoice(slot == player, { slot = player; onSlot(player) },
+                                    label = { Text(if (player == -1) "Auto" else "P${player + 1}") }, enabled = canEdit) }
+                            }
+                        }
+                    }
+                }
+                1 -> LayoutGallery(layouts, activeId, layoutActions,
+                    onRenameRequest = { renamingId = it }, onDeleteRequest = { deletingId = it })
+                else -> {
+                    GlassPanel(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Make it yours.", style = MaterialTheme.typography.headlineSmall)
+                            Text("Appearance", style = MaterialTheme.typography.labelLarge)
+                            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf("System", "Light", "Dark").forEach { mode -> GlassChoice(themeMode == mode, { onTheme(mode) }, label = { Text(mode) }) }
+                            }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            Text("Controller buttons", style = MaterialTheme.typography.labelLarge)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                GlassChoice(!playStationButtons, { onControllerButtons(false) }, label = { Text("Xbox") })
+                                GlassChoice(playStationButtons, { onControllerButtons(true) }, label = { Text("PlayStation") })
+                            }
+                            Text("Choose matching controller output on the Windows dashboard.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            GlassTextField(deviceName, { deviceName = it.take(32); onDeviceName(deviceName) }, label = { Text("Device name") },
+                                singleLine = true, enabled = canEdit, modifier = Modifier.fillMaxWidth())
+                        }
+                    }
+                    updateContent()
+                    Footer()
+                }
             }
         }
-
-        Spacer(Modifier.height(20.dp))
-
-        StatusPanel(connectionState)
-
-        Spacer(Modifier.height(24.dp))
-
-        LayoutGallery(
-            layouts = layouts,
-            activeId = activeId,
-            actions = layoutActions,
-            onRenameRequest = { renamingId = it },
-            onDeleteRequest = { deletingId = it },
-        )
-
-        Spacer(Modifier.height(24.dp))
-
-        updateContent()
-        Spacer(Modifier.height(12.dp))
-        Footer()
-
-        Spacer(Modifier.height(24.dp))
+        GlassPanel(Modifier.align(Alignment.BottomCenter).padding(horizontal = 16.dp, vertical = 12.dp)
+            .widthIn(max = 560.dp).fillMaxWidth(), shape = RoundedCornerShape(32.dp)) {
+            Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf("Connect", "Profiles", "Settings").forEachIndexed { index, title ->
+                    GlassChoice(section == index, { focus.clearFocus(); section = index; onSectionChanged(index) }, label = { Text(title) }, modifier = Modifier.weight(1f).heightIn(min = 46.dp))
+                }
+            }
+        }
     }
 
     renamingId?.let { id ->
@@ -309,11 +274,7 @@ private fun ServerList(
     onScan: () -> Unit,
     onPick: (DiscoveredServer) -> Unit,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    GlassPanel(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -369,11 +330,11 @@ private fun ServerRow(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
+    GlassCard(
+        shape = RoundedCornerShape(20.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(20.dp))
             .clickable(enabled = enabled, onClick = onClick),
     ) {
         Row(
@@ -428,11 +389,7 @@ private fun LayoutGallery(
     if (presetPicker) GamePresetDialog(onChoose = { actions.preset(it); presetPicker = false }, onDismiss = { presetPicker = false })
     val full = layouts.size >= MAX_LAYOUTS
 
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    GlassPanel(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -449,7 +406,7 @@ private fun LayoutGallery(
             }
             Spacer(Modifier.height(4.dp))
             Text(
-                "Pick which layout to use or edit. Tap ⋮ on a layout to rename, share, show its QR code or delete it.",
+                "Pick which layout to use or edit. Use ⋮ for calibration, macros, sharing and more.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -480,7 +437,7 @@ private fun LayoutGallery(
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
 
             layouts.chunked(2).forEach { pair ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     for (layout in pair) {
                         LayoutCard(
                             layout = layout,
@@ -523,13 +480,14 @@ private fun LayoutCard(
     val isDefault = layout.id == DEFAULT_ID
     var menuOpen by remember { mutableStateOf(false) }
     val border = if (isActive) {
-        Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+        Modifier.border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = .65f), RoundedCornerShape(20.dp))
     } else {
         Modifier
     }
 
-    Card(
-        shape = RoundedCornerShape(12.dp),
+    GlassCard(
+        selected = isActive,
+        shape = RoundedCornerShape(20.dp),
         modifier = modifier
             .then(border)
             // Long-press renames a custom layout. Default is not renamable, so its
@@ -549,7 +507,7 @@ private fun LayoutCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (layout.game.isNotBlank()) Text(layout.game, maxLines = 1, style = MaterialTheme.typography.labelSmall)
+                    if (layout.game.isNotBlank() && !layout.game.equals(layout.name, ignoreCase = true)) Text(layout.game, maxLines = 1, style = MaterialTheme.typography.labelSmall)
                     if (isActive) {
                         Text(
                             "In use",
@@ -660,11 +618,11 @@ private fun RenameDialog(
     onConfirm: (String) -> Unit,
 ) {
     var name by remember { mutableStateOf(current) }
-    AlertDialog(
+    GlassAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Rename layout") },
         text = {
-            OutlinedTextField(
+            GlassTextField(
                 value = name,
                 onValueChange = { name = it },
                 singleLine = true,
@@ -736,11 +694,7 @@ private fun StatusPanel(state: ConnectionState) {
         label = "status",
     )
 
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-        shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    GlassPanel(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
