@@ -12,7 +12,7 @@ import kotlinx.serialization.json.Json
  * [version] exists so a format change can be migrated rather than silently
  * misread. Version 1 always held exactly three slots, `custom1`…`custom3`;
  * version 2 expanded the custom layout collection; version 3 upgrades untouched
- * built-in game tuning once. User edits and the original slot ids are retained.
+ * built-in game tuning once. Version 4 adds macro controls. User edits and the original slot ids are retained.
  */
 @Serializable
 data class LayoutStoreData(
@@ -21,7 +21,7 @@ data class LayoutStoreData(
     val custom: List<ControllerLayout> = emptyList(),
 ) {
     companion object {
-        const val CURRENT_VERSION = 3
+        const val CURRENT_VERSION = 4
     }
 }
 
@@ -105,7 +105,7 @@ object LayoutCodec {
             .take(MAX_CUSTOM)
             .mapIndexed { index, layout ->
                 val name = layout.name.trim().take(MAX_NAME_LENGTH)
-                val cleaned = layout.copy(name = name.ifEmpty { "Custom ${index + 1}" }, input = layout.input.sanitized(), game = layout.game.take(80), elements = layout.elements.map { if (it is StickElement) it.sanitized() else it })
+                val cleaned = layout.copy(name = name.ifEmpty { "Custom ${index + 1}" }, input = layout.input.sanitized(), game = layout.game.take(80), elements = layout.elements.map { when (it) { is StickElement -> it.sanitized(); is MacroElement -> if (it.validRecording()) it else it.copy(frames = emptyList()); else -> it } })
                 if (data.version < 3) GamePresets.refreshUntouchedInput(cleaned) else cleaned
             }
         val activeValid = data.activeId == DEFAULT_ID || custom.any { it.id == data.activeId }
