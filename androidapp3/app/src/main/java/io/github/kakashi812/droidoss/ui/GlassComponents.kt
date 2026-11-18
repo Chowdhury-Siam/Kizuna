@@ -12,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -32,9 +31,7 @@ internal fun GlassBackdrop(modifier: Modifier = Modifier, content: @Composable B
             else listOf(Color(0xFFE0EBFC), Color(0xFFF1EFFE), Color(0xFFDBF1F5)), end = Offset(size.width, size.height))
         val blue = Brush.radialGradient(listOf(Color(0xFF6BAAFF).copy(alpha = if (dark) .26f else .35f), Color.Transparent),
             center = Offset(size.width * .1f, size.height * .16f), radius = (size.maxDimension * .65f).coerceAtLeast(1f))
-        val violet = Brush.radialGradient(listOf(Color(0xFFB6A0F2).copy(alpha = if (dark) .18f else .28f), Color.Transparent),
-            center = Offset(size.width * .98f, size.height * .62f), radius = (size.maxDimension * .6f).coerceAtLeast(1f))
-        onDrawBehind { drawRect(base); drawRect(blue); drawRect(violet) }
+        onDrawBehind { drawRect(base); drawRect(blue) }
     }, content = content)
 }
 
@@ -46,7 +43,7 @@ internal fun Modifier.glassMaterial(
     val accent = MaterialTheme.colorScheme.primary
     val fill = remember(dark, strong, selected, accent) {
         Brush.linearGradient(if (dark) listOf(
-            Color(0xFF52708D).copy(alpha = if (strong) .88f else .48f),
+            Color(0xFF466683).copy(alpha = if (strong) .95f else .43f),
             Color(0xFF1A2D47).copy(alpha = if (strong) .96f else .76f),
             (if (selected) Color(0xFF254E7B) else Color(0xFF20354E)).copy(alpha = if (strong) .96f else .72f),
         ) else listOf(Color.White.copy(alpha = if (strong) .98f else .88f),
@@ -54,11 +51,11 @@ internal fun Modifier.glassMaterial(
             (if (selected) Color(0xFFD6E9FF) else Color(0xFFEAF2FF)).copy(alpha = if (strong) .94f else .58f)))
     }
     val rim = remember(dark, selected, accent) {
-        Brush.linearGradient(listOf(if (selected) accent.copy(alpha = .75f) else Color.White.copy(alpha = if (dark) .48f else .96f),
-            if (selected) accent.copy(alpha = .3f) else Color.White.copy(alpha = if (dark) .08f else .28f)))
+        Brush.linearGradient(listOf(if (selected) accent.copy(alpha = .8f) else Color.White.copy(alpha = if (dark) .28f else .96f),
+            if (selected) accent.copy(alpha = .55f) else Color.White.copy(alpha = if (dark) .10f else .28f)))
     }
-    return this.shadow(6.dp, shape, ambientColor = Color.Black.copy(alpha = .08f), spotColor = Color.Black.copy(alpha = .12f))
-        .clip(shape).background(fill).border(BorderStroke(1.dp, rim), shape)
+    val raised = if (strong) shadow(5.dp, shape, clip = false) else this
+    return raised.background(fill, shape).border(BorderStroke(1.dp, rim), shape)
 }
 
 @Composable
@@ -90,12 +87,15 @@ internal fun GlassTextField(value: String, onValueChange: (String) -> Unit, modi
     singleLine: Boolean = false, textStyle: TextStyle = LocalTextStyle.current,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions = KeyboardActions.Default,
     shape: Shape = RoundedCornerShape(18.dp)) {
-    OutlinedTextField(value, onValueChange, modifier = modifier.glassMaterial(shape), enabled = enabled,
+    val colors = MaterialTheme.colorScheme
+    OutlinedTextField(value, onValueChange, modifier = modifier, enabled = enabled,
         label = label, placeholder = placeholder, singleLine = singleLine, textStyle = textStyle,
         keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, shape = shape,
-        colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = Color.Transparent,
-            focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = .65f),
-            focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent))
+        colors = OutlinedTextFieldDefaults.colors(
+            unfocusedBorderColor = colors.outline, focusedBorderColor = colors.primary,
+            focusedContainerColor = colors.surface.copy(alpha = .32f),
+            unfocusedContainerColor = colors.surface.copy(alpha = .24f),
+        ))
 }
 
 @Composable
