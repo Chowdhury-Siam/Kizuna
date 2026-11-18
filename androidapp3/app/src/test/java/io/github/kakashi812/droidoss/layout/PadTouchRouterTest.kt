@@ -103,6 +103,7 @@ class PadTouchRouterTest {
         val r = PadTouchRouter(listOf(touchpad, a).map { TouchTarget(it, it.x * 1000, it.y * 600, it.size * 500) }, 1000f, 24f)
         r.down(1, 600f, 200f, 0)
         r.move(1, 680f, 200f, 16_000_000)
+        assertFalse(r.needsSampling)
         r.sample(2_000_000_000)
         assertTrue(r.snapshot().inputs.single().x > 0)
         r.move(1, 850f, 240f, 2_010_000_000)
@@ -112,5 +113,21 @@ class PadTouchRouterTest {
         assertTrue(moving.x > 0f)
         r.up(1)
         assertTrue(r.snapshot().sticks.isEmpty())
+    }
+
+    @Test fun touchpadRequestsSamplesUntilInteriorMotionExpiresOrFingerLifts() {
+        val touchpad = right.copy(mode = StickMode.TOUCHPAD)
+        val r = PadTouchRouter(listOf(TouchTarget(touchpad, 700f, 420f, 75f)), 1000f, 24f)
+        r.down(1, 600f, 200f, 0)
+        assertFalse(r.needsSampling)
+        r.move(1, 610f, 200f, 16_000_000)
+        assertTrue(r.needsSampling)
+        assertTrue(r.sample(80_000_000))
+        assertFalse(r.needsSampling)
+        assertEquals(ControlTouch(touchpad.id), r.snapshot().inputs.single())
+        r.move(1, 620f, 200f, 90_000_000)
+        assertTrue(r.needsSampling)
+        r.up(1)
+        assertFalse(r.needsSampling)
     }
 }
