@@ -64,7 +64,7 @@ Glass depth comes from cached backdrop gradients and highlights. It does not cap
 
 Drag empty space on the **left half** to control the left stick, or on the **right half** to control the right stick. The stick anchors where the finger lands, starts neutral, and returns to its saved position after release. Its saved sensitivity, deadzone, response curve and joystick/touchpad mode still apply. Each stick's **Input → Drag anywhere on this side** switch can turn this off.
 
-Buttons, triggers, the D-pad and macro buttons have priority over sticks, including overlaps. Sliding a button touch into empty space never starts a stick. A captured stick pauses when its finger enters another control's touch area. The analog stick resumes from its original center when the finger leaves. A touchpad starts measuring relative motion again from the point where the finger leaves the control. Touchpad edge turning still works in empty space. Separate fingers can control both sticks and other controls. One finger owns each stick until lift or cancellation.
+Buttons, triggers, the D-pad and macro buttons have priority where a touch starts. Sliding a button touch into empty space never starts a stick. Once either stick has captured a drag, it keeps responding as the finger crosses other controls without pressing them. This also applies in touchpad mode. Separate fingers can control both sticks and press buttons at the same time.
 
 To make a one-tap action sequence:
 
