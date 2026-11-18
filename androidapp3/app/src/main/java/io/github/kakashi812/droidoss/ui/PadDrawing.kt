@@ -19,6 +19,7 @@ package io.github.kakashi812.droidoss.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.key
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -27,6 +28,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
@@ -107,106 +110,151 @@ internal fun rememberControlLabels(placed: List<Placed>): Map<String, TextLayout
     }
 }
 
-internal fun DrawScope.drawControl(
-    placed: Placed,
-    pressed: Map<String, Boolean>,
-    knobs: Map<String, Offset>,
-    labels: Map<String, TextLayoutResult>,
-    foreground: Color = Color.White,
-    dpadMask: Int = 0,
-) {
-    val element = placed.element
-    val isDown = pressed[element.id] == true
-    val ink = if (element.color == 0xFFE0E4EC) foreground else Color(element.color)
-    val alpha = element.opacity * (if (element.enabled && !element.hidden) 1f else 0.3f)
-
-    val darkBackdrop = foreground.luminance() > .5f
-    when (element) {
-        is StickElement -> if (element.mode == StickMode.TOUCHPAD) {
-            val top = placed.centre - Offset(placed.radius, placed.radius * .7f)
-            val area = Size(placed.radius * 2, placed.radius * 1.4f)
-            drawGlassTile(top, area, placed.radius * .18f, alpha * .8f, ink, isDown, darkBackdrop)
-            drawLine(ink.copy(alpha = alpha * .10f), placed.centre - Offset(placed.radius * .6f, 0f), placed.centre + Offset(placed.radius * .6f, 0f), 1f)
-            drawLine(ink.copy(alpha = alpha * .10f), placed.centre - Offset(0f, placed.radius * .4f), placed.centre + Offset(0f, placed.radius * .4f), 1f)
-            if (isDown) drawGlassCircle(placed.centre + (knobs[element.id] ?: Offset.Zero), placed.radius * .13f, alpha, ink, true, darkBackdrop)
-        } else {
-            drawGlassCircle(placed.centre, placed.radius, alpha * .65f, ink, false, darkBackdrop)
-            val knob = placed.centre + (knobs[element.id] ?: Offset.Zero)
-            drawGlassCircle(knob, placed.radius * KNOB_FRACTION, alpha, ink, isDown, darkBackdrop)
-            drawCircle(ink.copy(alpha = alpha * .2f), placed.radius * KNOB_FRACTION * .88f, knob)
+/**
+ * Keep the glass brushes in control-local coordinates so drag movement only
+ * changes the canvas translation. Moving a knob never rebuilds its shaders.
+ */
+@Composable
+internal fun rememberControlPaints(placed: List<Placed>, foreground: Color): Map<String, ControlPaint> {
+    val dark = foreground.luminance() > .5f
+    return placed.associate { p ->
+        val element = p.element
+        val ink = if (element.color == 0xFFE0E4EC) foreground else Color(element.color)
+        val alpha = element.opacity * (if (element.enabled && !element.hidden) 1f else .3f)
+        val mode = (element as? StickElement)?.mode
+        val dpad = element is DpadElement
+        val paint = key(element.id) {
+            remember(p.radius, ink, alpha, dark, mode, dpad) {
+                ControlPaint(p.radius, ink, alpha, dark, mode, dpad)
+            }
         }
-        is DpadElement -> drawDpad(placed, dpadMask, alpha, ink, darkBackdrop)
-        is ButtonElement, is TriggerElement, is MacroElement ->
-            drawGlassCircle(placed.centre, placed.radius, alpha, ink, isDown, darkBackdrop)
-    }
-
-    // Labels last, so they sit on top of the pressed fill.
-    labels[element.id]?.let { measured ->
-        drawText(
-            textLayoutResult = measured,
-            color = ink.copy(alpha = alpha * if (isDown) 1f else .92f),
-            topLeft = placed.centre - Offset(
-                measured.size.width / 2f,
-                measured.size.height / 2f,
-            ),
-        )
+        element.id to paint
     }
 }
 
-/** Large, separated arrow pads use the full footprint and highlight the actual output bits. */
-internal fun DrawScope.drawDpad(placed: Placed, mask: Int, alpha: Float, ink: Color, darkBackdrop: Boolean = true) {
+internal class ControlPaint(
+    radius: Float, val ink: Color, val alpha: Float, dark: Boolean, mode: StickMode?, dpad: Boolean,
+) {
+    val circle = GlassPaint(Offset(-radius, -radius), Offset(radius, radius),
+        if (mode != null) alpha * .65f else alpha, ink, dark)
+    private val knobRadius = radius * if (mode == StickMode.TOUCHPAD) .13f else KNOB_FRACTION
+    val knob = if (mode != null) GlassPaint(Offset(-knobRadius, -knobRadius),
+        Offset(knobRadius, knobRadius), alpha, ink, dark) else null
+    val tile = when {
+        dpad -> GlassPaint(Offset.Zero, Offset(DPAD_ARM_HALF_WIDTH * 2, DPAD_ARM_END - DPAD_ARM_START) * radius, alpha, ink, dark)
+        mode == StickMode.TOUCHPAD -> GlassPaint(Offset.Zero, Offset(radius * 2, radius * 1.4f), alpha * .8f, ink, dark)
+        else -> null
+    }
+    val horizontalTile = if (dpad) GlassPaint(Offset.Zero,
+        Offset(DPAD_ARM_END - DPAD_ARM_START, DPAD_ARM_HALF_WIDTH * 2) * radius, alpha, ink, dark) else null
+    val activeArrow = (if (ink.luminance() > .35f) Color.Black else Color.White).copy(alpha = alpha * .95f)
+}
+
+internal class GlassPaint(from: Offset, to: Offset, val alpha: Float, ink: Color, dark: Boolean) {
+    private val tint = Color(0xFF97B8DF).copy(alpha = alpha * if (dark) .10f else .30f)
+    val fill = Brush.linearGradient(listOf(Color.White.copy(alpha = alpha * if (dark) .22f else .93f), tint), from, to)
+    val rim = Brush.linearGradient(listOf(Color.White.copy(alpha = alpha * if (dark) .68f else .98f),
+        ink.copy(alpha = alpha * .14f)), from, to)
+    val shade = Color.Black.copy(alpha = alpha * if (dark) .12f else .06f)
+    val highlight = Color.White.copy(alpha = alpha * .07f)
+    val pressed = ink.copy(alpha = alpha * .22f)
+}
+
+private val RimStroke = Stroke(1.5f)
+private val InnerStroke = Stroke(1f)
+private val DpadArms = arrayOf(Offset(0f, -1f), Offset(0f, 1f), Offset(-1f, 0f), Offset(1f, 0f))
+
+internal fun DrawScope.drawControl(
+    placed: Placed,
+    paint: ControlPaint,
+    label: TextLayoutResult?,
+    isDown: Boolean = false,
+    knob: Offset = Offset.Zero,
+    centre: Offset = placed.centre,
+    dpadMask: Int = 0,
+    scale: Float = 1f,
+) {
+    val element = placed.element
     val r = placed.radius
-    val c = placed.centre
-    drawCircle(ink.copy(alpha = alpha * 0.05f), r, c)
+    if (r <= 0f) return
+
+    withTransform({
+        translate(centre.x, centre.y)
+        if (scale != 1f) this.scale(scale, scale, Offset.Zero)
+    }) {
+        when (element) {
+            is StickElement -> if (element.mode == StickMode.TOUCHPAD) {
+                drawGlassTile(Offset(-r, -r * .7f), Size(r * 2, r * 1.4f), r * .18f, requireNotNull(paint.tile), isDown)
+                val cross = paint.ink.copy(alpha = paint.alpha * .10f)
+                drawLine(cross, Offset(-r * .6f, 0f), Offset(r * .6f, 0f), 1f)
+                drawLine(cross, Offset(0f, -r * .4f), Offset(0f, r * .4f), 1f)
+                if (isDown) translate(knob.x, knob.y) { drawGlassCircle(r * .13f, requireNotNull(paint.knob), true) }
+            } else {
+                drawGlassCircle(r, paint.circle, false)
+                translate(knob.x, knob.y) {
+                    drawGlassCircle(r * KNOB_FRACTION, requireNotNull(paint.knob), isDown)
+                    drawCircle(paint.ink.copy(alpha = paint.alpha * .2f), r * KNOB_FRACTION * .88f, Offset.Zero)
+                }
+            }
+            is DpadElement -> drawDpad(r, dpadMask, paint)
+            is ButtonElement, is TriggerElement, is MacroElement -> drawGlassCircle(r, paint.circle, isDown)
+        }
+        if (label != null) {
+            drawText(textLayoutResult = label, color = paint.ink.copy(alpha = paint.alpha * if (isDown) 1f else .92f),
+                topLeft = Offset(-label.size.width / 2f, -label.size.height / 2f))
+        }
+    }
+}
+
+private fun DrawScope.drawDpad(r: Float, mask: Int, paint: ControlPaint) {
+    drawCircle(paint.ink.copy(alpha = paint.alpha * .05f), r, Offset.Zero)
     val half = DPAD_ARM_HALF_WIDTH
     val start = DPAD_ARM_START
     val end = DPAD_ARM_END
-    val pads = listOf(
-        Triple(1, Offset(-half, -end), Size(half * 2, end - start)),
-        Triple(2, Offset(-half, start), Size(half * 2, end - start)),
-        Triple(4, Offset(-end, -half), Size(end - start, half * 2)),
-        Triple(8, Offset(start, -half), Size(end - start, half * 2)),
-    )
-    for ((bit, offset, size) in pads) {
-        val active = mask and bit != 0
-        val top = c + offset * r
-        val area = Size(size.width * r, size.height * r)
-        val corner = CornerRadius(r * 0.12f)
-        drawGlassTile(top, area, corner.x, alpha, ink, active, darkBackdrop)
-        val direction = when (bit) { 1 -> Offset(0f, -1f); 2 -> Offset(0f, 1f); 4 -> Offset(-1f, 0f); else -> Offset(1f, 0f) }
-        val middle = c + direction * (r * 0.67f)
-        val wing = Offset(-direction.y, direction.x) * (r * 0.11f)
-        val tip = middle + direction * (r * 0.09f)
-        val back = middle - direction * (r * 0.06f)
-        val arrow = (if (active) { if (ink.luminance() > 0.35f) Color.Black else Color.White } else ink).copy(alpha = alpha * 0.95f)
+    val armWidth = 2 * half * r
+    val armLength = (end - start) * r
+    val idleArrow = paint.ink.copy(alpha = paint.alpha * .95f)
+    for (index in DpadArms.indices) {
+        val direction = DpadArms[index]
+        val active = mask and (1 shl index) != 0
+        val vertical = index < 2
+        val top = when (index) {
+            0 -> Offset(-half, -end)
+            1 -> Offset(-half, start)
+            2 -> Offset(-end, -half)
+            else -> Offset(start, -half)
+        } * r
+        val area = if (vertical) Size(armWidth, armLength) else Size(armLength, armWidth)
+        val tile = if (vertical) paint.tile else paint.horizontalTile
+        drawGlassTile(top, area, r * .12f, requireNotNull(tile), active)
+        val middle = direction * (r * .67f)
+        val wing = Offset(-direction.y, direction.x) * (r * .11f)
+        val tip = middle + direction * (r * .09f)
+        val back = middle - direction * (r * .06f)
+        val arrow = if (active) paint.activeArrow else idleArrow
         drawLine(arrow, back + wing, tip, STROKE_WIDTH)
         drawLine(arrow, back - wing, tip, STROKE_WIDTH)
     }
-    drawCircle(ink.copy(alpha = alpha * 0.25f), r * 0.10f, c)
+    drawCircle(paint.ink.copy(alpha = paint.alpha * .25f), r * .10f, Offset.Zero)
 }
 
-/** Convex highlights are drawn directly; no blur of the live control layer is needed. */
-private fun DrawScope.drawGlassCircle(c: Offset, radius: Float, alpha: Float, ink: Color, down: Boolean, dark: Boolean) {
-    val from = c - Offset(radius, radius); val to = c + Offset(radius, radius)
-    drawCircle(Color.Black.copy(alpha = alpha * if (dark) .12f else .06f), radius + 1f, c + Offset(0f, radius * .055f))
-    drawCircle(Brush.linearGradient(listOf(Color.White.copy(alpha = alpha * if (dark) .22f else .93f),
-        Color(0xFF97B8DF).copy(alpha = alpha * if (dark) .10f else .30f)), from, to), radius, c)
-    if (down) drawCircle(ink.copy(alpha = alpha * .22f), radius, c)
-    drawCircle(Brush.linearGradient(listOf(Color.White.copy(alpha = alpha * if (dark) .68f else .98f),
-        ink.copy(alpha = alpha * .14f)), from, to), radius, c, style = Stroke(1.5f))
-    drawCircle(Color.White.copy(alpha = alpha * .07f), (radius - 2f).coerceAtLeast(0f), c, style = Stroke(1f))
+private fun DrawScope.drawGlassCircle(radius: Float, paint: GlassPaint, down: Boolean) {
+    drawCircle(paint.shade, radius + 1f, Offset(0f, radius * .055f))
+    drawCircle(paint.fill, radius, Offset.Zero)
+    if (down) drawCircle(paint.pressed, radius, Offset.Zero)
+    drawCircle(paint.rim, radius, Offset.Zero, style = RimStroke)
+    drawCircle(paint.highlight, (radius - 2f).coerceAtLeast(0f), Offset.Zero, style = InnerStroke)
 }
 
-private fun DrawScope.drawGlassTile(top: Offset, area: Size, corner: Float, alpha: Float, ink: Color, down: Boolean, dark: Boolean) {
-    val to = top + Offset(area.width, area.height)
-    drawRoundRect(Brush.linearGradient(listOf(Color.White.copy(alpha = alpha * if (dark) .22f else .9f),
-        Color(0xFF97B8DF).copy(alpha = alpha * .14f)), top, to), top, area, CornerRadius(corner))
-    if (down) drawRoundRect(ink.copy(alpha = alpha * .27f), top, area, CornerRadius(corner))
-    drawRoundRect(Brush.linearGradient(listOf(Color.White.copy(alpha = alpha * if (dark) .6f else .96f),
-        ink.copy(alpha = alpha * .18f)), top, to), top, area, CornerRadius(corner), style = Stroke(1.5f))
+private fun DrawScope.drawGlassTile(top: Offset, area: Size, corner: Float, paint: GlassPaint, down: Boolean) {
+    translate(top.x, top.y) {
+        val curve = CornerRadius(corner)
+        drawRoundRect(paint.fill, Offset.Zero, area, curve)
+        if (down) drawRoundRect(paint.pressed, Offset.Zero, area, curve)
+        drawRoundRect(paint.rim, Offset.Zero, area, curve, style = RimStroke)
+    }
 }
 
 internal const val STROKE_WIDTH = 3f
-internal const val CORNER = 8f
 internal const val KNOB_FRACTION = 0.42f
 internal const val LABEL_FRACTION = 0.62f
